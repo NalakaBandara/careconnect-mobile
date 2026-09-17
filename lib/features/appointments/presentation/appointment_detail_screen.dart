@@ -2,6 +2,7 @@ import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_ui.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/cancel_appointment_screen.dart';
+import 'package:careconnect_mobile/features/appointments/presentation/check_in_screen.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/reschedule_appointment_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -64,11 +65,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           if (appointment.status == AppointmentStatus.confirmed) ...[
             const SizedBox(height: 14),
             _CheckInCard(
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Secure check-in will be available in the next step.',
-                  ),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => CheckInScreen(appointment: appointment),
                 ),
               ),
             ),
@@ -318,6 +317,7 @@ class _CheckInCard extends StatelessWidget {
           ),
         ),
         IconButton(
+          key: const Key('open-check-in-button'),
           onPressed: onTap,
           icon: const Icon(Icons.arrow_forward_rounded),
         ),

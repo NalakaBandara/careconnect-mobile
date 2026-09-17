@@ -1,6 +1,7 @@
 import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_endpoints.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 
 class AppointmentsRepository {
   const AppointmentsRepository(this._client);
@@ -41,5 +42,24 @@ class AppointmentsRepository {
       },
     );
     return CareAppointment.fromJson(response as Map<String, dynamic>);
+  }
+
+  Future<CheckInRecord> getCheckIn(String appointmentId) async {
+    final response = await _client.get(
+      ApiEndpoints.appointmentCheckIn(appointmentId),
+    );
+    return CheckInRecord.fromJson(response as Map<String, dynamic>);
+  }
+
+  /// Records arrival immediately. Opening the code screen must not call this.
+  Future<CheckInRecord> createCheckIn(
+    String appointmentId, {
+    required String method,
+  }) async {
+    final response = await _client.post(
+      ApiEndpoints.appointmentCheckIn(appointmentId),
+      body: {'method': method},
+    );
+    return CheckInRecord.fromJson(response as Map<String, dynamic>);
   }
 }

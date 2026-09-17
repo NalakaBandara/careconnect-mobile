@@ -1,6 +1,7 @@
 import 'package:careconnect_mobile/app/app.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
@@ -203,6 +204,15 @@ void main() {
     expect(find.byKey(const Key('appointment-detail-screen')), findsOneWidget);
     expect(find.text('CC-004821'), findsOneWidget);
 
+    final checkInButton = find.byKey(const Key('open-check-in-button'));
+    await tester.scrollUntilVisible(checkInButton, 220);
+    await tester.tap(checkInButton);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('check-in-screen')), findsOneWidget);
+    expect(find.byKey(const Key('check-in-reference')), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
     final cancelButton = find.byKey(const Key('cancel-appointment-button'));
     await tester.scrollUntilVisible(cancelButton, 250);
     await tester.tap(cancelButton);
@@ -254,5 +264,21 @@ void main() {
     expect(appointment.doctor.displayName, 'Dr. Maya Fernando');
     expect(appointment.service.durationMinutes, 20);
     expect(appointment.reference, 'CC-000042');
+  });
+
+  test('parses the backend check-in response contract', () {
+    final checkIn = CheckInRecord.fromJson({
+      'id': '5',
+      'appointmentId': '42',
+      'checkedInAt': '2026-09-21T08:58:00.000Z',
+      'checkedInByUserId': '8',
+      'method': 'RECEPTION_QR',
+      'queueNumber': 3,
+      'createdAt': '2026-09-21T08:58:00.000Z',
+    });
+
+    expect(checkIn.appointmentId, '42');
+    expect(checkIn.method, 'RECEPTION_QR');
+    expect(checkIn.queueNumber, 3);
   });
 }
