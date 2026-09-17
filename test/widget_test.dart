@@ -1,5 +1,7 @@
 import 'package:careconnect_mobile/app/app.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
@@ -86,7 +88,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('nav-appointments')));
     await tester.pumpAndSettle();
-    expect(find.text('Every visit, beautifully organized.'), findsOneWidget);
+    expect(find.byKey(const Key('appointments-title')), findsOneWidget);
   });
 
   testWidgets('filters care professionals and opens a profile', (tester) async {
@@ -183,5 +185,74 @@ void main() {
       'endTime': '16:50',
       'reason': 'General check-up',
     });
+  });
+
+  testWidgets('opens an appointment and moves a cancellation to past', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light, home: const AppointmentsScreen()),
+    );
+
+    expect(find.text('Upcoming'), findsOneWidget);
+    expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('appointment-card-4821')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appointment-detail-screen')), findsOneWidget);
+    expect(find.text('CC-004821'), findsOneWidget);
+
+    final cancelButton = find.byKey(const Key('cancel-appointment-button'));
+    await tester.scrollUntilVisible(cancelButton, 250);
+    await tester.tap(cancelButton);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('cancellation-reason-field')),
+      'Unable to attend',
+    );
+    await tester.tap(find.byKey(const Key('confirm-cancellation-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Cancelled'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appointments-past-tab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
+  });
+
+  test('parses the backend appointment response contract', () {
+    final appointment = CareAppointment.fromJson({
+      'id': '42',
+      'patientId': '8',
+      'doctor': {
+        'id': '3',
+        'firstName': 'Maya',
+        'lastName': 'Fernando',
+        'licenseNumber': 'SLMC 15102',
+      },
+      'clinic': {'id': '7', 'name': 'Harbour Wellness Clinic'},
+      'service': {
+        'id': '6',
+        'name': 'Skin consultation',
+        'durationMinutes': 20,
+      },
+      'doctorScheduleId': '15',
+      'appointmentDate': '2026-09-21',
+      'startTime': '14:30',
+      'endTime': '14:50',
+      'status': 'PENDING',
+      'reason': 'Review',
+      'notes': null,
+      'createdAt': '2026-09-17T09:00:00.000Z',
+      'updatedAt': '2026-09-17T09:00:00.000Z',
+    });
+
+    expect(appointment.status, AppointmentStatus.pending);
+    expect(appointment.doctor.displayName, 'Dr. Maya Fernando');
+    expect(appointment.service.durationMinutes, 20);
+    expect(appointment.reference, 'CC-000042');
   });
 }

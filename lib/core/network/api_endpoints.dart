@@ -17,5 +17,8 @@ abstract final class ApiEndpoints {
   static String availableSlots(Object doctorId) =>
       '${doctor(doctorId)}/available-slots';
   static String appointment(Object id) => '$appointments/$id';
+  static String appointmentStatusHistory(Object id) =>
+      '${appointment(id)}/status-history';
+  static String appointmentCheckIn(Object id) => '${appointment(id)}/check-in';
   static String notificationRead(Object id) => '$notifications/$id/read';
 }

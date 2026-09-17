@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
@@ -30,16 +31,7 @@ class _MainShellState extends State<MainShell> {
         onProfile: () => _select(3),
       ),
       const FindCareScreen(),
-      const _ComingSoonPage(
-        key: ValueKey('appointments-page'),
-        eyebrow: 'APPOINTMENTS',
-        title: 'Every visit, beautifully organized.',
-        description:
-            'Upcoming visits, history, rescheduling, and check-in will live here.',
-        icon: Icons.calendar_month_rounded,
-        color: Color(0xFF5276D8),
-        background: AppColors.blueSoft,
-      ),
+      const AppointmentsScreen(key: ValueKey('appointments-page')),
       _ProfilePreviewPage(user: widget.user, onLogout: widget.onLogout),
     ];
 
@@ -94,68 +86,6 @@ class _MainShellState extends State<MainShell> {
                 selectedIcon: Icon(Icons.person_rounded),
                 label: 'Profile',
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonPage extends StatelessWidget {
-  const _ComingSoonPage({
-    super.key,
-    required this.eyebrow,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  final String eyebrow;
-  final String title;
-  final String description;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 28, 22, 110),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(title, style: Theme.of(context).textTheme.displaySmall),
-              const SizedBox(height: 14),
-              Text(description, style: Theme.of(context).textTheme.bodyLarge),
-              const Spacer(),
-              Center(
-                child: Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    color: background,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 66),
-                ),
-              ),
-              const Spacer(),
             ],
           ),
         ),
