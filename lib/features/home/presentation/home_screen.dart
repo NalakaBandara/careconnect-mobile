@@ -10,12 +10,14 @@ class HomeScreen extends StatelessWidget {
     required this.onFindCare,
     required this.onAppointments,
     required this.onProfile,
+    required this.onNotifications,
   });
 
   final String? firstName;
   final VoidCallback onFindCare;
   final VoidCallback onAppointments;
   final VoidCallback onProfile;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +35,10 @@ class HomeScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 112),
               sliver: SliverList.list(
                 children: [
-                  _HomeHeader(onProfile: onProfile),
+                  _HomeHeader(
+                    onProfile: onProfile,
+                    onNotifications: onNotifications,
+                  ),
                   const SizedBox(height: 30),
                   Text(
                     'Good morning, $displayName',
@@ -122,9 +127,10 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onProfile});
+  const _HomeHeader({required this.onProfile, required this.onNotifications});
 
   final VoidCallback onProfile;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -143,8 +149,9 @@ class _HomeHeader extends StatelessWidget {
         ),
         const Spacer(),
         IconButton.filledTonal(
+          key: const Key('home-notifications-button'),
           tooltip: 'Notifications',
-          onPressed: () {},
+          onPressed: onNotifications,
           icon: const Icon(Icons.notifications_none_rounded),
         ),
         const SizedBox(width: 6),

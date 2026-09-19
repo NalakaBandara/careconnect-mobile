@@ -1,15 +1,22 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/profile/data/profile_preview_data.dart';
+import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/presentation/edit_profile_screen.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_settings_screens.dart';
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.user, this.onLogout});
+  const ProfileScreen({
+    super.key,
+    this.user,
+    this.onLogout,
+    this.onNotifications,
+  });
 
   final CurrentUser? user;
   final Future<void> Function()? onLogout;
+  final VoidCallback? onNotifications;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -50,8 +57,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               IconButton.filledTonal(
+                key: const Key('profile-notifications-button'),
                 tooltip: 'Notifications',
-                onPressed: () => _open(const NotificationPreferencesScreen()),
+                onPressed:
+                    widget.onNotifications ??
+                    () => _open(const NotificationsScreen()),
                 icon: const Icon(Icons.notifications_none_rounded),
               ),
             ],

@@ -2,6 +2,7 @@ import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
+import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +23,10 @@ class _MainShellState extends State<MainShell> {
 
   void _select(int index) => setState(() => _selectedIndex = index);
 
+  void _openNotifications() => Navigator.of(
+    context,
+  ).push<void>(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -30,10 +35,15 @@ class _MainShellState extends State<MainShell> {
         onFindCare: () => _select(1),
         onAppointments: () => _select(2),
         onProfile: () => _select(3),
+        onNotifications: _openNotifications,
       ),
       const FindCareScreen(),
       const AppointmentsScreen(key: ValueKey('appointments-page')),
-      ProfileScreen(user: widget.user, onLogout: widget.onLogout),
+      ProfileScreen(
+        user: widget.user,
+        onLogout: widget.onLogout,
+        onNotifications: _openNotifications,
+      ),
     ];
 
     return Scaffold(

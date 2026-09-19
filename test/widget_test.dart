@@ -8,6 +8,8 @@ import 'package:careconnect_mobile/features/booking/presentation/booking_flow_sc
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
+import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
+import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/domain/profile_creation_request.dart';
@@ -94,6 +96,62 @@ void main() {
     await tester.tap(find.byKey(const Key('nav-appointments')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('appointments-title')), findsOneWidget);
+  });
+
+  testWidgets('opens notifications from home and reads an update', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light, home: const MainShell()),
+    );
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('notifications-title')), findsOneWidget);
+    expect(find.text('2 updates waiting for you.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('notification-notification-1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('notification-detail-screen')), findsOneWidget);
+    expect(find.text('Appointment confirmed'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('1 update waiting for you.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('unread-notification-1')), findsNothing);
+  });
+
+  testWidgets('shows the empty unread notification state', (tester) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light, home: const NotificationsScreen()),
+    );
+
+    await tester.tap(find.byKey(const Key('mark-all-notifications-read')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notifications-unread-filter')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Everything is read'), findsOneWidget);
+    expect(find.text('You are all caught up.'), findsOneWidget);
+  });
+
+  test('parses the backend notification response contract', () {
+    final notification = CareNotification.fromJson({
+      'id': '91',
+      'type': 'APPOINTMENT_REMINDER',
+      'title': 'Appointment tomorrow',
+      'message': 'Your appointment begins at 09:30.',
+      'isRead': false,
+      'createdAt': '2026-09-19T08:30:00.000Z',
+      'readAt': null,
+    });
+
+    expect(notification.id, '91');
+    expect(notification.type, CareNotificationType.reminder);
+    expect(notification.isRead, isFalse);
+    expect(notification.readAt, isNull);
   });
 
   testWidgets('filters care professionals and opens a profile', (tester) async {
