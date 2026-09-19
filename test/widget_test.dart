@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/app/app.dart';
+import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
@@ -36,6 +37,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('CARE, YOUR WAY'), findsOneWidget);
+  });
+
+  test('API logs redact credentials and personal fields', () {
+    final sanitized = ApiLogger.sanitize({
+      'doctorProfileId': '3',
+      'email': 'amara@example.com',
+      'access_token': 'secret-token',
+      'patient': {'firstName': 'Amara', 'phone': '0771234567'},
+      'items': [
+        {'id': '8', 'notes': 'Private health note'},
+      ],
+    });
+
+    expect(sanitized, {
+      'doctorProfileId': '3',
+      'email': '<redacted>',
+      'access_token': '<redacted>',
+      'patient': {'firstName': '<redacted>', 'phone': '<redacted>'},
+      'items': [
+        {'id': '8', 'notes': '<redacted>'},
+      ],
+    });
   });
 
   testWidgets('moves through onboarding and opens auth entry', (tester) async {

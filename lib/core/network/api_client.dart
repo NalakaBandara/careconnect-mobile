@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:careconnect_mobile/core/config/app_config.dart';
 import 'package:careconnect_mobile/core/network/api_exception.dart';
+import 'package:careconnect_mobile/core/network/api_logger.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
 
@@ -36,11 +37,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Object? body,
   }) async {
+    final uri = AppConfig.apiUri(path, queryParameters);
+    final stopwatch = Stopwatch()..start();
+    ApiLogger.request(method: method, uri: uri, body: body);
+
     try {
-      final request = await _httpClient.openUrl(
-        method,
-        AppConfig.apiUri(path, queryParameters),
-      );
+      final request = await _httpClient.openUrl(method, uri);
       request.headers.contentType = ContentType.json;
       request.headers.set(HttpHeaders.acceptHeader, ContentType.json.mimeType);
 
@@ -59,6 +61,14 @@ class ApiClient {
           ? null
           : jsonDecode(responseText);
 
+      ApiLogger.response(
+        method: method,
+        uri: uri,
+        statusCode: response.statusCode,
+        elapsed: stopwatch.elapsed,
+        body: decodedBody,
+      );
+
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException(
           message: _errorMessage(decodedBody),
@@ -70,13 +80,37 @@ class ApiClient {
     } on ApiException {
       rethrow;
     } on SocketException catch (error) {
+      ApiLogger.failure(
+        method: method,
+        uri: uri,
+        elapsed: stopwatch.elapsed,
+        error: error,
+        safeMessage: error.message,
+      );
       throw ApiException(
         message: 'Unable to reach CareConnect: ${error.message}',
       );
-    } on FormatException {
+    } on FormatException catch (error) {
+      ApiLogger.failure(
+        method: method,
+        uri: uri,
+        elapsed: stopwatch.elapsed,
+        error: error,
+        safeMessage: 'Invalid JSON response',
+      );
       throw const ApiException(
         message: 'The server returned an invalid response.',
       );
+    } catch (error) {
+      ApiLogger.failure(
+        method: method,
+        uri: uri,
+        elapsed: stopwatch.elapsed,
+        error: error,
+      );
+      rethrow;
+    } finally {
+      stopwatch.stop();
     }
   }
 

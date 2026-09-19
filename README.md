@@ -24,6 +24,19 @@ careconnect://YOUR_CARECONNECT_AUTH0_DOMAIN/android/com.example.careconnect_mobi
 
 Add the same URL to **Allowed Callback URLs** and **Allowed Logout URLs**.
 
+## Debug API logs
+
+API requests are printed automatically in debug builds:
+
+```text
+[CareConnect API] → GET http://10.0.2.2:3000/api/v1/users/me
+[CareConnect API] ✓ 200 GET http://10.0.2.2:3000/api/v1/users/me (142ms)
+```
+
+Request and response payloads are sanitized before printing. Authentication
+tokens, passwords, and personal or health-related fields are redacted. API
+logging is disabled automatically in profile and release builds.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
