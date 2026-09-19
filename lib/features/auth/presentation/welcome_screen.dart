@@ -6,6 +6,7 @@ import 'package:careconnect_mobile/features/auth/data/auth_service.dart';
 import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
 import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
+import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_setup_screen.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
@@ -84,17 +85,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (homeContext) => MainShell(
-            user: user,
-            onLogout: () async {
-              await service.logout();
-              if (!homeContext.mounted) return;
-              Navigator.of(homeContext).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
-                (_) => false,
-              );
-            },
-          ),
+          builder: (homeContext) =>
+              _buildHome(homeContext, service: service, user: user),
         ),
       );
     } on ApiException catch (error) {
@@ -102,7 +94,34 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       if (error.statusCode == 404) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
-            builder: (_) => ProfileSetupScreen(email: session.email),
+            builder: (_) => ProfileSetupScreen(
+              email: session.email,
+              displayName: session.displayName,
+              onCreate: (request) async {
+                final createClient = ApiClient(
+                  accessTokenProvider: service.accessToken,
+                );
+                try {
+                  return await UserRepository(
+                    createClient,
+                  ).createCurrentUser(request);
+                } finally {
+                  createClient.close();
+                }
+              },
+              homeBuilder: (homeContext, user) =>
+                  _buildHome(homeContext, service: service, user: user),
+              onExit: (setupContext) async {
+                await service.logout();
+                if (!setupContext.mounted) return;
+                Navigator.of(setupContext).pushAndRemoveUntil(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const WelcomeScreen(),
+                  ),
+                  (_) => false,
+                );
+              },
+            ),
           ),
         );
         return;
@@ -112,6 +131,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       apiClient.close();
     }
   }
+
+  Widget _buildHome(
+    BuildContext homeContext, {
+    required AuthService service,
+    required CurrentUser user,
+  }) => MainShell(
+    user: user,
+    onLogout: () async {
+      await service.logout();
+      if (!homeContext.mounted) return;
+      Navigator.of(homeContext).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+        (_) => false,
+      );
+    },
+  );
 
   void _showConfigurationSheet() {
     showModalBottomSheet<void>(

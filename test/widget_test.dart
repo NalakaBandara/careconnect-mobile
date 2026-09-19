@@ -10,7 +10,9 @@ import 'package:careconnect_mobile/features/find_care/presentation/find_care_scr
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
+import 'package:careconnect_mobile/features/profile/domain/profile_creation_request.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
+import 'package:careconnect_mobile/features/profile/presentation/profile_setup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -336,6 +338,88 @@ void main() {
       'dateOfBirth': '1991-03-14',
       'phone': '0771234567',
       'profilePhoto': null,
+    });
+  });
+
+  testWidgets('creates a CareConnect profile after authenticated sign-up', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    ProfileCreationRequest? submitted;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProfileSetupScreen(
+          email: 'amara@example.com',
+          displayName: 'Amara Silva',
+          onCreate: (request) async {
+            submitted = request;
+            return CurrentUser(
+              id: '8',
+              email: request.email,
+              firstName: request.firstName,
+              lastName: request.lastName,
+              roles: const ['PATIENT'],
+              dateOfBirth: request.dateOfBirth,
+              phone: request.phone,
+              status: 'ACTIVE',
+            );
+          },
+          homeBuilder: (_, user) => Scaffold(
+            body: Text(
+              'Welcome ${user.firstName}',
+              key: const Key('created-profile-home'),
+            ),
+          ),
+          onExit: (_) async {},
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('profile-setup-screen')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('profile-setup-phone')),
+      '0771234567',
+    );
+    await tester.tap(find.byKey(const Key('profile-setup-date-of-birth')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    final submit = find.byKey(const Key('create-profile-submit'));
+    await tester.drag(
+      find.byKey(const Key('profile-setup-screen')),
+      const Offset(0, -520),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('created-profile-home')), findsOneWidget);
+    expect(submitted?.toJson(), {
+      'firstName': 'Amara',
+      'lastName': 'Silva',
+      'email': 'amara@example.com',
+      'dateOfBirth': '1990-01-01',
+      'phone': '0771234567',
+    });
+  });
+
+  test('profile creation payload follows the updated backend contract', () {
+    final request = ProfileCreationRequest(
+      firstName: ' Amara ',
+      lastName: ' Silva ',
+      email: 'AMARA@EXAMPLE.COM ',
+      dateOfBirth: DateTime(1991, 3, 14),
+      phone: ' 0771234567 ',
+    );
+
+    expect(request.toJson(), {
+      'firstName': 'Amara',
+      'lastName': 'Silva',
+      'email': 'amara@example.com',
+      'dateOfBirth': '1991-03-14',
+      'phone': '0771234567',
     });
   });
 }
