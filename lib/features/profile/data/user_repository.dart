@@ -14,4 +14,15 @@ class UserRepository {
     }
     throw const FormatException('Missing user data');
   }
+
+  Future<CurrentUser> updateCurrentUser(CurrentUser user) async {
+    final response = await _apiClient.put(
+      ApiEndpoints.currentUser,
+      body: user.toUpdateJson(),
+    );
+    if (response case {'data': final Map<String, dynamic> data}) {
+      return CurrentUser.fromJson(data);
+    }
+    throw const FormatException('Missing user data');
+  }
 }

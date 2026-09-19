@@ -9,6 +9,8 @@ import 'package:careconnect_mobile/features/find_care/data/find_care_preview_dat
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
+import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -280,5 +282,60 @@ void main() {
     expect(checkIn.appointmentId, '42');
     expect(checkIn.method, 'RECEPTION_QR');
     expect(checkIn.queueNumber, 3);
+  });
+
+  testWidgets('edits preview profile details and opens support', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light, home: const ProfileScreen()),
+    );
+
+    expect(find.byKey(const Key('profile-title')), findsOneWidget);
+    expect(find.text('Amara Silva'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('edit-profile-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('edit-profile-screen')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('profile-first-name-field')),
+      'Ayesha',
+    );
+    await tester.tap(find.byKey(const Key('save-profile-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ayesha Silva'), findsOneWidget);
+
+    final supportTile = find.byKey(const Key('support-tile'));
+    await tester.drag(
+      find.byKey(const Key('profile-screen')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(supportTile);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('support-screen')), findsOneWidget);
+  });
+
+  test('profile update payload follows the backend contract', () {
+    final user = CurrentUser(
+      id: '8',
+      email: 'amara@example.com',
+      firstName: 'Amara',
+      lastName: 'Silva',
+      roles: const ['PATIENT'],
+      dateOfBirth: DateTime(1991, 3, 14),
+      phone: '0771234567',
+      status: 'ACTIVE',
+    );
+
+    expect(user.toUpdateJson(), {
+      'firstName': 'Amara',
+      'lastName': 'Silva',
+      'dateOfBirth': '1991-03-14',
+      'phone': '0771234567',
+      'profilePhoto': null,
+    });
   });
 }

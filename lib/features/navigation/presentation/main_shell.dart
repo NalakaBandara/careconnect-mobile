@@ -3,6 +3,7 @@ import 'package:careconnect_mobile/features/appointments/presentation/appointmen
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
+import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 
 class MainShell extends StatefulWidget {
@@ -32,7 +33,7 @@ class _MainShellState extends State<MainShell> {
       ),
       const FindCareScreen(),
       const AppointmentsScreen(key: ValueKey('appointments-page')),
-      _ProfilePreviewPage(user: widget.user, onLogout: widget.onLogout),
+      ProfileScreen(user: widget.user, onLogout: widget.onLogout),
     ];
 
     return Scaffold(
@@ -89,153 +90,6 @@ class _MainShellState extends State<MainShell> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ProfilePreviewPage extends StatelessWidget {
-  const _ProfilePreviewPage({required this.user, required this.onLogout});
-
-  final CurrentUser? user;
-  final Future<void> Function()? onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = user?.displayName.isNotEmpty == true
-        ? user!.displayName
-        : 'Guest preview';
-    final email = user?.email ?? 'Sign in later to sync your care';
-
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 28, 22, 110),
-          children: [
-            Text(
-              'Your profile',
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: AppColors.lilacSoft,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person_rounded,
-                      color: Color(0xFF7957C8),
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(email, style: const TextStyle(color: AppColors.muted)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            const _ProfileTile(
-              icon: Icons.person_outline_rounded,
-              title: 'Personal details',
-              caption: 'Name, phone and address',
-            ),
-            const SizedBox(height: 10),
-            const _ProfileTile(
-              icon: Icons.notifications_none_rounded,
-              title: 'Notifications',
-              caption: 'Reminders and updates',
-            ),
-            const SizedBox(height: 10),
-            const _ProfileTile(
-              icon: Icons.help_outline_rounded,
-              title: 'Help & support',
-              caption: 'FAQs and contact',
-            ),
-            if (onLogout != null) ...[
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: onLogout,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Sign out'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileTile extends StatelessWidget {
-  const _ProfileTile({
-    required this.icon,
-    required this.title,
-    required this.caption,
-  });
-
-  final IconData icon;
-  final String title;
-  final String caption;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(19),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.mintSoft,
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 21),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  caption,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
-        ],
       ),
     );
   }
