@@ -1,11 +1,15 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
+import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/professional_profile_screen.dart';
 import 'package:flutter/material.dart';
 
 class FindCareScreen extends StatefulWidget {
-  const FindCareScreen({super.key});
+  const FindCareScreen({super.key, this.repository, this.onNotifications});
+
+  final FindCareDataSource? repository;
+  final VoidCallback? onNotifications;
 
   @override
   State<FindCareScreen> createState() => _FindCareScreenState();
@@ -16,10 +20,17 @@ class _FindCareScreenState extends State<FindCareScreen> {
   String _selectedSpecialty = 'All';
   bool _verifiedOnly = false;
   bool _availableSoon = false;
+  late List<CareProfessional> _professionals;
+  late List<CareSpecialty> _specialties;
+  bool _isLoading = false;
+  String? _error;
+  int _requestGeneration = 0;
+
+  bool get _isPreview => widget.repository == null;
 
   List<CareProfessional> get _results {
     final query = _searchController.text.trim().toLowerCase();
-    return FindCarePreviewData.professionals
+    return _professionals
         .where((professional) {
           final matchesSpecialty =
               _selectedSpecialty == 'All' ||
@@ -36,6 +47,7 @@ class _FindCareScreenState extends State<FindCareScreen> {
           final matchesVerified = !_verifiedOnly || professional.isVerified;
           final matchesAvailability =
               !_availableSoon ||
+              !_isPreview ||
               (professional.nextAvailableLabel?.startsWith('Today') ?? false);
           return matchesSpecialty &&
               matchesSearch &&
@@ -43,6 +55,84 @@ class _FindCareScreenState extends State<FindCareScreen> {
               matchesAvailability;
         })
         .toList(growable: false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _professionals = _isPreview
+        ? List.of(FindCarePreviewData.professionals)
+        : [];
+    _specialties = _isPreview
+        ? FindCarePreviewData.specialties
+              .where((name) => name != 'All')
+              .map((name) => CareSpecialty(id: name, name: name))
+              .toList()
+        : [];
+    if (!_isPreview) _loadCatalog();
+  }
+
+  Future<void> _loadCatalog() async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait<Object>([
+        widget.repository!.getSpecialties(),
+        widget.repository!.getDoctors(),
+      ]);
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _specialties = results[0] as List<CareSpecialty>;
+        _professionals = results[1] as List<CareProfessional>;
+      });
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _error =
+            'We could not load care professionals. Check your connection and try again.';
+      });
+    } finally {
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadDoctors({String? specialtyId}) async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final doctors = await widget.repository!.getDoctors(
+        specialtyId: specialtyId,
+      );
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _professionals = doctors);
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _error = 'The selected care options could not be loaded. Try again.';
+      });
+    } finally {
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _selectSpecialty(String name) {
+    setState(() => _selectedSpecialty = name);
+    if (_isPreview) return;
+    String? specialtyId;
+    for (final specialty in _specialties) {
+      if (specialty.name == name) specialtyId = specialty.id;
+    }
+    _loadDoctors(specialtyId: specialtyId);
   }
 
   @override
@@ -59,6 +149,7 @@ class _FindCareScreenState extends State<FindCareScreen> {
       builder: (_) => _FilterSheet(
         initialVerifiedOnly: _verifiedOnly,
         initialAvailableSoon: _availableSoon,
+        supportsAvailabilityFilter: _isPreview,
       ),
     );
     if (result == null || !mounted) return;
@@ -70,11 +161,13 @@ class _FindCareScreenState extends State<FindCareScreen> {
 
   void _clearFilters() {
     _searchController.clear();
+    final shouldReload = !_isPreview && _selectedSpecialty != 'All';
     setState(() {
       _selectedSpecialty = 'All';
       _verifiedOnly = false;
       _availableSoon = false;
     });
+    if (shouldReload) _loadDoctors();
   }
 
   @override
@@ -105,8 +198,9 @@ class _FindCareScreenState extends State<FindCareScreen> {
                         ),
                       ),
                       IconButton.filledTonal(
+                        key: const Key('find-care-notifications-button'),
                         tooltip: 'Notifications',
-                        onPressed: () {},
+                        onPressed: widget.onNotifications,
                         icon: const Icon(Icons.notifications_none_rounded),
                       ),
                     ],
@@ -154,7 +248,7 @@ class _FindCareScreenState extends State<FindCareScreen> {
                     height: 38,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: FindCarePreviewData.specialties.length + 1,
+                      itemCount: _specialties.length + 2,
                       separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (_, index) {
                         if (index == 0) {
@@ -173,13 +267,13 @@ class _FindCareScreenState extends State<FindCareScreen> {
                             side: const BorderSide(color: AppColors.border),
                           );
                         }
-                        final specialty =
-                            FindCarePreviewData.specialties[index - 1];
+                        final specialty = index == 1
+                            ? 'All'
+                            : _specialties[index - 2].name;
                         return ChoiceChip(
                           label: Text(specialty),
                           selected: specialty == _selectedSpecialty,
-                          onSelected: (_) =>
-                              setState(() => _selectedSpecialty = specialty),
+                          onSelected: (_) => _selectSpecialty(specialty),
                           selectedColor: AppColors.primary,
                           labelStyle: TextStyle(
                             color: specialty == _selectedSpecialty
@@ -195,6 +289,14 @@ class _FindCareScreenState extends State<FindCareScreen> {
                       },
                     ),
                   ),
+                  if (_isLoading) ...[
+                    const SizedBox(height: 14),
+                    const LinearProgressIndicator(
+                      key: Key('find-care-loading'),
+                      minHeight: 3,
+                      borderRadius: BorderRadius.all(Radius.circular(99)),
+                    ),
+                  ],
                   const SizedBox(height: 27),
                   Row(
                     children: [
@@ -219,7 +321,11 @@ class _FindCareScreenState extends State<FindCareScreen> {
                     ],
                   ),
                   const SizedBox(height: 13),
-                  if (results.isEmpty)
+                  if (_error != null)
+                    _ErrorResults(message: _error!, onRetry: _loadCatalog)
+                  else if (results.isEmpty && _isLoading)
+                    const _LoadingResults()
+                  else if (results.isEmpty)
                     _EmptyResults(onClear: _clearFilters)
                   else
                     for (var index = 0; index < results.length; index++) ...[
@@ -229,6 +335,7 @@ class _FindCareScreenState extends State<FindCareScreen> {
                           MaterialPageRoute<void>(
                             builder: (_) => ProfessionalProfileScreen(
                               professional: results[index],
+                              repository: widget.repository,
                             ),
                           ),
                         ),
@@ -502,14 +609,85 @@ class _EmptyResults extends StatelessWidget {
   }
 }
 
+class _LoadingResults extends StatelessWidget {
+  const _LoadingResults();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 48),
+    child: Center(
+      child: Column(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Finding trusted care near you…',
+            style: TextStyle(color: AppColors.muted),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ErrorResults extends StatelessWidget {
+  const _ErrorResults({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('find-care-error'),
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 38),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Column(
+      children: [
+        const CircleAvatar(
+          radius: 32,
+          backgroundColor: Color(0xFFFFE8E3),
+          child: Icon(
+            Icons.cloud_off_rounded,
+            color: Color(0xFFB84C4C),
+            size: 29,
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'Care directory unavailable',
+          style: TextStyle(
+            color: AppColors.ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.muted, height: 1.45),
+        ),
+        const SizedBox(height: 18),
+        FilledButton.tonal(onPressed: onRetry, child: const Text('Try again')),
+      ],
+    ),
+  );
+}
+
 class _FilterSheet extends StatefulWidget {
   const _FilterSheet({
     required this.initialVerifiedOnly,
     required this.initialAvailableSoon,
+    required this.supportsAvailabilityFilter,
   });
 
   final bool initialVerifiedOnly;
   final bool initialAvailableSoon;
+  final bool supportsAvailabilityFilter;
 
   @override
   State<_FilterSheet> createState() => _FilterSheetState();
@@ -549,13 +727,30 @@ class _FilterSheetState extends State<_FilterSheet> {
               value: _verifiedOnly,
               onChanged: (value) => setState(() => _verifiedOnly = value),
             ),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Available today'),
-              subtitle: const Text('Prioritize care you can book soon'),
-              value: _availableSoon,
-              onChanged: (value) => setState(() => _availableSoon = value),
-            ),
+            if (widget.supportsAvailabilityFilter)
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Available today'),
+                subtitle: const Text('Prioritize care you can book soon'),
+                value: _availableSoon,
+                onChanged: (value) => setState(() => _availableSoon = value),
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, color: AppColors.primary),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Open a professional profile to see live appointment times.',
+                        style: TextStyle(color: AppColors.muted, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 14),
             FilledButton(
               key: const Key('apply-care-filters'),

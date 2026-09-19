@@ -138,6 +138,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     required CurrentUser user,
   }) => MainShell(
     user: user,
+    accessTokenProvider: service.accessToken,
     onLogout: () async {
       await service.logout();
       if (!homeContext.mounted) return;

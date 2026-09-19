@@ -7,6 +7,8 @@ import 'package:careconnect_mobile/features/appointments/presentation/appointmen
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
+import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
+import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
 import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
@@ -207,6 +209,60 @@ void main() {
     await tester.tap(find.byKey(const Key('book-professional-button')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('booking-slot-step')), findsOneWidget);
+  });
+
+  testWidgets('loads the authenticated care directory and available slots', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeFindCareRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: FindCareScreen(repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dr. Nadeesha Fernando'), findsOneWidget);
+    expect(find.text('1 professional'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Cardiology'));
+    await tester.pumpAndSettle();
+    expect(repository.lastSpecialtyId, '12');
+
+    await tester.tap(find.byKey(const ValueKey('professional-22')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('professional-profile-name')), findsOneWidget);
+
+    final service = find.text('Heart health review');
+    await tester.scrollUntilVisible(service, 220);
+    expect(service, findsOneWidget);
+    final slot = find.byKey(const ValueKey('availability-time-09:30'));
+    await tester.scrollUntilVisible(slot, 220);
+    expect(slot, findsOneWidget);
+  });
+
+  test('parses the backend doctor directory contract', () {
+    final professional = CareProfessional.fromJson({
+      'id': '22',
+      'firstName': 'Nadeesha',
+      'lastName': 'Fernando',
+      'profilePhoto': null,
+      'bio': 'Cardiac care',
+      'yearsOfExperience': 8,
+      'isVerified': true,
+      'specialties': [
+        {'id': '12', 'name': 'Cardiology', 'description': null},
+      ],
+      'clinics': [
+        {'id': '7', 'name': 'Harbour Medical Centre'},
+      ],
+    });
+
+    expect(professional.id, '22');
+    expect(professional.displayName, 'Dr. Nadeesha Fernando');
+    expect(professional.primarySpecialty, 'Cardiology');
+    expect(professional.isVerified, isTrue);
   });
 
   testWidgets('completes the preview appointment request journey', (
@@ -503,4 +559,61 @@ void main() {
       'phone': '0771234567',
     });
   });
+}
+
+class _FakeFindCareRepository implements FindCareDataSource {
+  String? lastSpecialtyId;
+
+  static const professional = CareProfessional(
+    id: '22',
+    firstName: 'Nadeesha',
+    lastName: 'Fernando',
+    specialties: [CareSpecialty(id: '12', name: 'Cardiology')],
+    clinics: [
+      CareClinicSummary(
+        id: '7',
+        name: 'Harbour Medical Centre',
+        city: 'Colombo',
+      ),
+    ],
+    isVerified: true,
+    yearsOfExperience: 8,
+  );
+
+  @override
+  Future<List<CareSpecialty>> getSpecialties() async => const [
+    CareSpecialty(id: '12', name: 'Cardiology'),
+  ];
+
+  @override
+  Future<List<CareProfessional>> getDoctors({
+    String? specialtyId,
+    String? clinicId,
+  }) async {
+    lastSpecialtyId = specialtyId;
+    return const [professional];
+  }
+
+  @override
+  Future<CareProfessional> getProfessionalProfile(
+    CareProfessional summary,
+  ) async => professional.copyWith(
+    services: const [
+      CareService(id: '31', name: 'Heart health review', durationMinutes: 30),
+    ],
+  );
+
+  @override
+  Future<List<CareAvailabilityPreview>> getUpcomingAvailability({
+    required String doctorId,
+    required String clinicId,
+    int days = 7,
+  }) async => const [
+    CareAvailabilityPreview(
+      day: 'Tomorrow',
+      date: 'Sep 20',
+      isoDate: '2026-09-20',
+      times: ['09:30'],
+    ),
+  ];
 }

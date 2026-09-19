@@ -6,8 +6,8 @@ class CareSpecialty {
   final String? description;
 
   factory CareSpecialty.fromJson(Map<String, dynamic> json) => CareSpecialty(
-    id: json['id'] as String,
-    name: json['name'] as String,
+    id: json['id'].toString(),
+    name: json['name'] as String? ?? 'Specialty',
     description: json['description'] as String?,
   );
 }
@@ -21,8 +21,8 @@ class CareClinicSummary {
 
   factory CareClinicSummary.fromJson(Map<String, dynamic> json) =>
       CareClinicSummary(
-        id: json['id'] as String,
-        name: json['name'] as String,
+        id: json['id'].toString(),
+        name: json['name'] as String? ?? 'Clinic',
         city: json['city'] as String?,
       );
 }
@@ -41,8 +41,8 @@ class CareService {
   final int? durationMinutes;
 
   factory CareService.fromJson(Map<String, dynamic> json) => CareService(
-    id: json['id'] as String,
-    name: json['name'] as String,
+    id: json['id'].toString(),
+    name: json['name'] as String? ?? 'Healthcare service',
     description: json['description'] as String?,
     durationMinutes: json['durationMinutes'] as int?,
   );
@@ -106,7 +106,7 @@ class CareProfessional {
 
   factory CareProfessional.fromJson(Map<String, dynamic> json) =>
       CareProfessional(
-        id: json['id'] as String,
+        id: json['id'].toString(),
         firstName: json['firstName'] as String? ?? '',
         lastName: json['lastName'] as String? ?? '',
         specialties: (json['specialties'] as List<dynamic>? ?? const [])
@@ -122,4 +122,25 @@ class CareProfessional {
         bio: json['bio'] as String?,
         yearsOfExperience: json['yearsOfExperience'] as int?,
       );
+
+  CareProfessional copyWith({
+    List<CareClinicSummary>? clinics,
+    List<CareService>? services,
+    List<CareAvailabilityPreview>? availability,
+    String? nextAvailableLabel,
+  }) => CareProfessional(
+    id: id,
+    firstName: firstName,
+    lastName: lastName,
+    specialties: specialties,
+    clinics: clinics ?? this.clinics,
+    isVerified: isVerified,
+    profilePhoto: profilePhoto,
+    bio: bio,
+    yearsOfExperience: yearsOfExperience,
+    rating: rating,
+    nextAvailableLabel: nextAvailableLabel ?? this.nextAvailableLabel,
+    services: services ?? this.services,
+    availability: availability ?? this.availability,
+  );
 }

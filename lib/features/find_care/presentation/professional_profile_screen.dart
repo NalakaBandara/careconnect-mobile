@@ -1,12 +1,18 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
+import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:flutter/material.dart';
 
 class ProfessionalProfileScreen extends StatefulWidget {
-  const ProfessionalProfileScreen({super.key, required this.professional});
+  const ProfessionalProfileScreen({
+    super.key,
+    required this.professional,
+    this.repository,
+  });
 
   final CareProfessional professional;
+  final FindCareDataSource? repository;
 
   @override
   State<ProfessionalProfileScreen> createState() =>
@@ -18,8 +24,94 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
   int _selectedDay = 0;
   String? _selectedTime;
   bool _isFavourite = false;
+  late CareProfessional _professional;
+  bool _isLoading = false;
+  bool _availabilityLoading = false;
+  String? _error;
+  int _availabilityGeneration = 0;
 
-  CareProfessional get professional => widget.professional;
+  CareProfessional get professional => _professional;
+
+  @override
+  void initState() {
+    super.initState();
+    _professional = widget.professional;
+    if (widget.repository != null) _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final profile = await widget.repository!.getProfessionalProfile(
+        widget.professional,
+      );
+      if (!mounted) return;
+      setState(() {
+        _professional = profile;
+        _selectedClinic = 0;
+        _selectedDay = 0;
+        _selectedTime = null;
+      });
+      if (profile.clinics.isNotEmpty) await _loadAvailability();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error =
+            'We could not refresh this professional. The directory summary is still available.';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadAvailability() async {
+    if (professional.clinics.isEmpty || widget.repository == null) return;
+    final generation = ++_availabilityGeneration;
+    final clinicId = professional.clinics[_selectedClinic].id;
+    setState(() {
+      _availabilityLoading = true;
+      _error = null;
+      _selectedDay = 0;
+      _selectedTime = null;
+    });
+    try {
+      final availability = await widget.repository!.getUpcomingAvailability(
+        doctorId: professional.id,
+        clinicId: clinicId,
+      );
+      if (!mounted || generation != _availabilityGeneration) {
+        return;
+      }
+      final nextLabel = availability.isEmpty
+          ? null
+          : '${availability.first.day}, ${availability.first.times.first}';
+      setState(() {
+        _professional = professional.copyWith(
+          availability: availability,
+          nextAvailableLabel: nextLabel,
+        );
+      });
+    } catch (_) {
+      if (!mounted || generation != _availabilityGeneration) return;
+      setState(() {
+        _error =
+            'Available times could not be loaded. Pull back and try again.';
+        _professional = professional.copyWith(availability: const []);
+      });
+    } finally {
+      if (mounted && generation == _availabilityGeneration) {
+        setState(() => _availabilityLoading = false);
+      }
+    }
+  }
+
+  void _selectClinic(int index) {
+    setState(() => _selectedClinic = index);
+    if (widget.repository != null) _loadAvailability();
+  }
 
   void _beginBooking() {
     if (professional.services.isEmpty ||
@@ -85,6 +177,18 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 126),
         children: [
           _ProfileHero(professional: professional),
+          if (_isLoading) ...[
+            const SizedBox(height: 14),
+            const LinearProgressIndicator(
+              key: Key('professional-profile-loading'),
+              minHeight: 3,
+              borderRadius: BorderRadius.all(Radius.circular(99)),
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 14),
+            _ProfileError(message: _error!, onRetry: _loadProfile),
+          ],
           const SizedBox(height: 28),
           const _SectionHeading(title: 'About'),
           const SizedBox(height: 11),
@@ -152,7 +256,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                 child: _ClinicCard(
                   clinic: professional.clinics[index],
                   selected: index == _selectedClinic,
-                  onTap: () => setState(() => _selectedClinic = index),
+                  onTap: () => _selectClinic(index),
                 ),
               ),
             ),
@@ -162,7 +266,9 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
             caption: 'Times shown in your local timezone',
           ),
           const SizedBox(height: 14),
-          if (availability.isEmpty)
+          if (_availabilityLoading)
+            const _AvailabilityLoading()
+          else if (availability.isEmpty)
             const _InlineEmpty(
               icon: Icons.event_busy_outlined,
               message: 'No appointment times are currently available.',
@@ -255,7 +361,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
         minimum: const EdgeInsets.fromLTRB(20, 8, 20, 14),
         child: FilledButton.icon(
           key: const Key('book-professional-button'),
-          onPressed: _beginBooking,
+          onPressed: _isLoading || _availabilityLoading ? null : _beginBooking,
           icon: const Icon(Icons.calendar_month_rounded, size: 20),
           label: Text(
             _selectedTime == null
@@ -266,6 +372,65 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       ),
     );
   }
+}
+
+class _AvailabilityLoading extends StatelessWidget {
+  const _AvailabilityLoading();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('professional-availability-loading'),
+    padding: const EdgeInsets.symmetric(vertical: 26),
+    alignment: Alignment.center,
+    child: const Column(
+      children: [
+        SizedBox(
+          width: 26,
+          height: 26,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+        SizedBox(height: 12),
+        Text(
+          'Checking the next available times…',
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfileError extends StatelessWidget {
+  const _ProfileError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('professional-profile-error'),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1EE),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.cloud_off_rounded, color: Color(0xFFB84C4C)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.ink,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ),
+        TextButton(onPressed: onRetry, child: const Text('Retry')),
+      ],
+    ),
+  );
 }
 
 class _ProfileHero extends StatelessWidget {
