@@ -1,12 +1,55 @@
+import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_ui.dart';
 import 'package:flutter/material.dart';
 
-class CheckInScreen extends StatelessWidget {
-  const CheckInScreen({super.key, required this.appointment});
+class CheckInScreen extends StatefulWidget {
+  const CheckInScreen({super.key, required this.appointment, this.repository});
 
   final CareAppointment appointment;
+  final AppointmentsDataSource? repository;
+
+  @override
+  State<CheckInScreen> createState() => _CheckInScreenState();
+}
+
+class _CheckInScreenState extends State<CheckInScreen> {
+  CheckInRecord? _record;
+  bool _isLoading = false;
+  String? _error;
+
+  CareAppointment get appointment => widget.appointment;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.repository != null) _loadCheckIn();
+  }
+
+  Future<void> _loadCheckIn() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final record = await widget.repository!.getCheckIn(appointment.id);
+      if (!mounted) return;
+      setState(() => _record = record);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.statusCode != 404) {
+        setState(() => _error = 'Check-in status could not be loaded.');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Check-in status could not be loaded.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -16,92 +59,173 @@ class CheckInScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
       children: [
         Text(
-          'Ready when you arrive',
+          _record == null ? 'Ready when you arrive' : 'You are checked in',
           style: Theme.of(
             context,
           ).textTheme.displaySmall?.copyWith(fontSize: 31),
         ),
         const SizedBox(height: 9),
-        const Text(
-          'Keep this screen ready for reception. Your secure code will activate when the clinic enables mobile check-in.',
-          style: TextStyle(color: AppColors.muted, height: 1.5),
+        Text(
+          _record == null
+              ? 'Keep this screen ready for reception. Your secure code will activate when the clinic enables mobile check-in.'
+              : 'Reception has recorded your arrival. Keep your queue details handy.',
+          style: const TextStyle(color: AppColors.muted, height: 1.5),
         ),
         const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFE2F6F0), Color(0xFFE8F0FF)],
+        if (_record == null)
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFE2F6F0), Color(0xFFE8F0FF)],
+              ),
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(28),
             ),
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            children: [
-              const _PreviewBadge(),
-              const SizedBox(height: 18),
-              _LockedCode(reference: appointment.reference),
-              const SizedBox(height: 18),
-              const Text(
-                'Appointment reference',
-                style: TextStyle(color: AppColors.muted, fontSize: 11),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                appointment.reference,
-                key: const Key('check-in-reference'),
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.7,
+            child: Column(
+              children: [
+                const _PreviewBadge(),
+                const SizedBox(height: 18),
+                _LockedCode(reference: appointment.reference),
+                const SizedBox(height: 18),
+                const Text(
+                  'Appointment reference',
+                  style: TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
-              ),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  appointment.reference,
+                  key: const Key('check-in-reference'),
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        if (_isLoading) ...[
+          const SizedBox(height: 14),
+          const LinearProgressIndicator(
+            key: Key('check-in-loading'),
+            minHeight: 3,
+          ),
+        ],
+        if (_record != null) ...[
+          const SizedBox(height: 14),
+          _CheckedInNotice(record: _record!),
+        ] else if (_error != null) ...[
+          const SizedBox(height: 14),
+          _CheckInLookupError(message: _error!, onRetry: _loadCheckIn),
+        ],
         const SizedBox(height: 16),
         _VisitSummary(appointment: appointment),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(17),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF1D2),
-            borderRadius: BorderRadius.circular(19),
+        if (_record == null)
+          Container(
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1D2),
+              borderRadius: BorderRadius.circular(19),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_clock_outlined, color: Color(0xFF93600A)),
+                SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Secure code not active yet',
+                        style: TextStyle(
+                          color: Color(0xFF76500D),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'A signed, expiring QR token is required before scanning can be enabled safely.',
+                        style: TextStyle(
+                          color: Color(0xFF76500D),
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: const Row(
+      ],
+    ),
+  );
+}
+
+class _CheckedInNotice extends StatelessWidget {
+  const _CheckedInNotice({required this.record});
+
+  final CheckInRecord record;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('checked-in-record'),
+    padding: const EdgeInsets.all(17),
+    decoration: BoxDecoration(
+      color: AppColors.mintSoft,
+      borderRadius: BorderRadius.circular(19),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.check_circle_rounded, color: AppColors.primary),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.lock_clock_outlined, color: Color(0xFF93600A)),
-              SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Secure code not active yet',
-                      style: TextStyle(
-                        color: Color(0xFF76500D),
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'A signed, expiring QR token is required before scanning can be enabled safely.',
-                      style: TextStyle(
-                        color: Color(0xFF76500D),
-                        fontSize: 11,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
+              const Text(
+                'Checked in successfully',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                record.queueNumber == null
+                    ? 'Reception has recorded your arrival.'
+                    : 'Your queue number is ${record.queueNumber}.',
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
               ),
             ],
           ),
         ),
+      ],
+    ),
+  );
+}
+
+class _CheckInLookupError extends StatelessWidget {
+  const _CheckInLookupError({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1EE),
+      borderRadius: BorderRadius.circular(17),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.sync_problem_rounded, color: Color(0xFFB84C4C)),
+        const SizedBox(width: 10),
+        Expanded(child: Text(message, style: const TextStyle(fontSize: 11))),
+        TextButton(onPressed: onRetry, child: const Text('Retry')),
       ],
     ),
   );

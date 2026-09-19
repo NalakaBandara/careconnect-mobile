@@ -1,6 +1,8 @@
 import 'package:careconnect_mobile/app/app.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
@@ -374,6 +376,53 @@ void main() {
     expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
   });
 
+  testWidgets('loads, checks in and cancels a backend appointment', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAppointmentsDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AppointmentsScreen(repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.listCalls, 1);
+    await tester.tap(find.byKey(const ValueKey('appointment-card-4821')));
+    await tester.pumpAndSettle();
+    expect(repository.detailCalls, 1);
+
+    final checkInButton = find.byKey(const Key('open-check-in-button'));
+    await tester.scrollUntilVisible(checkInButton, 220);
+    await tester.tap(checkInButton);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('checked-in-record')), findsOneWidget);
+    expect(find.text('Your queue number is 7.'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    final cancelButton = find.byKey(const Key('cancel-appointment-button'));
+    await tester.scrollUntilVisible(cancelButton, 240);
+    await tester.tap(cancelButton);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('cancellation-reason-field')),
+      'Schedule changed',
+    );
+    await tester.tap(find.byKey(const Key('confirm-cancellation-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.cancelReason, 'Schedule changed');
+    expect(find.text('Cancelled'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appointments-past-tab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
+  });
+
   test('parses the backend appointment response contract', () {
     final appointment = CareAppointment.fromJson({
       'id': '42',
@@ -616,4 +665,47 @@ class _FakeFindCareRepository implements FindCareDataSource {
       times: ['09:30'],
     ),
   ];
+}
+
+class _FakeAppointmentsDataSource implements AppointmentsDataSource {
+  CareAppointment appointment = AppointmentsPreviewData.appointments.first;
+  int listCalls = 0;
+  int detailCalls = 0;
+  String? cancelReason;
+
+  @override
+  Future<List<CareAppointment>> getMyAppointments({
+    AppointmentStatus? status,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    listCalls++;
+    return [appointment];
+  }
+
+  @override
+  Future<CareAppointment> getAppointment(String id) async {
+    detailCalls++;
+    return appointment;
+  }
+
+  @override
+  Future<CareAppointment> cancelAppointment(String id, {String? reason}) async {
+    cancelReason = reason;
+    appointment = appointment.copyWith(
+      status: AppointmentStatus.cancelled,
+      reason: reason,
+    );
+    return appointment;
+  }
+
+  @override
+  Future<CheckInRecord> getCheckIn(String appointmentId) async => CheckInRecord(
+    id: '11',
+    appointmentId: appointmentId,
+    checkedInAt: DateTime(2026, 9, 18, 9, 20),
+    checkedInByUserId: '8',
+    method: 'RECEPTION_QR',
+    queueNumber: 7,
+  );
 }

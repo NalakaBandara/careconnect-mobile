@@ -16,10 +16,10 @@ class CheckInRecord {
   final int? queueNumber;
 
   factory CheckInRecord.fromJson(Map<String, dynamic> json) => CheckInRecord(
-    id: json['id'] as String,
-    appointmentId: json['appointmentId'] as String,
+    id: json['id'].toString(),
+    appointmentId: json['appointmentId'].toString(),
     checkedInAt: DateTime.parse(json['checkedInAt'] as String),
-    checkedInByUserId: json['checkedInByUserId'] as String,
+    checkedInByUserId: json['checkedInByUserId'].toString(),
     method: json['method'] as String,
     queueNumber: json['queueNumber'] as int?,
   );

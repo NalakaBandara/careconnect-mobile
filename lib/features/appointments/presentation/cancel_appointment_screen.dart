@@ -1,11 +1,17 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_ui.dart';
 import 'package:flutter/material.dart';
 
 class CancelAppointmentScreen extends StatefulWidget {
-  const CancelAppointmentScreen({super.key, required this.appointment});
+  const CancelAppointmentScreen({
+    super.key,
+    required this.appointment,
+    this.repository,
+  });
   final CareAppointment appointment;
+  final AppointmentsDataSource? repository;
 
   @override
   State<CancelAppointmentScreen> createState() =>
@@ -14,6 +20,8 @@ class CancelAppointmentScreen extends StatefulWidget {
 
 class _CancelAppointmentScreenState extends State<CancelAppointmentScreen> {
   final _reasonController = TextEditingController();
+  bool _isSubmitting = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -21,14 +29,37 @@ class _CancelAppointmentScreenState extends State<CancelAppointmentScreen> {
     super.dispose();
   }
 
-  void _confirmCancellation() {
-    final updated = widget.appointment.copyWith(
-      status: AppointmentStatus.cancelled,
-      reason: _reasonController.text.trim().isEmpty
-          ? widget.appointment.reason
-          : _reasonController.text.trim(),
-    );
-    Navigator.of(context).pop(updated);
+  Future<void> _confirmCancellation() async {
+    final reason = _reasonController.text.trim();
+    if (widget.repository == null) {
+      final updated = widget.appointment.copyWith(
+        status: AppointmentStatus.cancelled,
+        reason: reason.isEmpty ? widget.appointment.reason : reason,
+      );
+      Navigator.of(context).pop(updated);
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    try {
+      final updated = await widget.repository!.cancelAppointment(
+        widget.appointment.id,
+        reason: reason.isEmpty ? null : reason,
+      );
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      Navigator.of(context).pop(updated);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _error =
+            'This appointment could not be cancelled. Check its latest status and try again.';
+      });
+    }
   }
 
   @override
@@ -81,25 +112,50 @@ class _CancelAppointmentScreenState extends State<CancelAppointmentScreen> {
                 ),
               ),
               const SizedBox(height: 22),
+              if (_error != null) ...[
+                Container(
+                  key: const Key('cancellation-error'),
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1EE),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                      color: Color(0xFF9C3F3F),
+                      fontSize: 11,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
               FilledButton(
                 key: const Key('confirm-cancellation-button'),
-                onPressed: _confirmCancellation,
+                onPressed: _isSubmitting ? null : _confirmCancellation,
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFFB84C4C),
                 ),
-                child: const Text('Yes, cancel appointment'),
+                child: Text(
+                  _isSubmitting ? 'Cancelling…' : 'Yes, cancel appointment',
+                ),
               ),
               const SizedBox(height: 10),
               OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _isSubmitting
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 child: const Text('Keep appointment'),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
-          'This preview updates the app locally. The real action will use PATCH /appointments/:id after authentication is connected.',
+        Text(
+          widget.repository == null
+              ? 'Preview mode updates this appointment locally.'
+              : 'Cancellation is sent securely to the CareConnect appointment API.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.muted, fontSize: 11, height: 1.4),
         ),

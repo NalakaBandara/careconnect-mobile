@@ -1,22 +1,56 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_detail_screen.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_ui.dart';
 import 'package:flutter/material.dart';
 
 class AppointmentsScreen extends StatefulWidget {
-  const AppointmentsScreen({super.key});
+  const AppointmentsScreen({super.key, this.repository});
+
+  final AppointmentsDataSource? repository;
 
   @override
   State<AppointmentsScreen> createState() => _AppointmentsScreenState();
 }
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
-  late final List<CareAppointment> _appointments = [
-    ...AppointmentsPreviewData.appointments,
-  ];
+  late List<CareAppointment> _appointments;
   bool _showPast = false;
+  bool _isLoading = false;
+  String? _error;
+
+  bool get _isPreview => widget.repository == null;
+
+  @override
+  void initState() {
+    super.initState();
+    _appointments = _isPreview
+        ? List.of(AppointmentsPreviewData.appointments)
+        : [];
+    if (!_isPreview) _loadAppointments();
+  }
+
+  Future<void> _loadAppointments() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final appointments = await widget.repository!.getMyAppointments();
+      if (!mounted) return;
+      setState(() => _appointments = appointments);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error =
+            'We could not load your appointments. Check your connection and try again.';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   List<CareAppointment> get _visibleAppointments =>
       _appointments
@@ -39,6 +73,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       MaterialPageRoute<void>(
         builder: (_) => AppointmentDetailScreen(
           initialAppointment: appointment,
+          repository: widget.repository,
           onChanged: _updateAppointment,
         ),
       ),
@@ -54,122 +89,192 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          key: const Key('appointments-screen'),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(22, 28, 22, 0),
-              sliver: SliverList.list(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'MY CARE',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.3,
-                              ),
-                            ),
-                            const SizedBox(height: 9),
-                            Text(
-                              'Your appointments',
-                              key: const Key('appointments-title'),
-                              style: Theme.of(context).textTheme.displaySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.blueSoft,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.calendar_month_rounded,
-                          color: Color(0xFF5276D8),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF1EF),
-                      borderRadius: BorderRadius.circular(17),
-                    ),
-                    child: Row(
+        child: RefreshIndicator(
+          onRefresh: _isPreview
+              ? () async =>
+                    Future<void>.delayed(const Duration(milliseconds: 250))
+              : _loadAppointments,
+          child: CustomScrollView(
+            key: const Key('appointments-screen'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(22, 28, 22, 0),
+                sliver: SliverList.list(
+                  children: [
+                    Row(
                       children: [
                         Expanded(
-                          child: _TabButton(
-                            key: const Key('appointments-upcoming-tab'),
-                            label: 'Upcoming',
-                            count: upcomingCount,
-                            selected: !_showPast,
-                            onTap: () => setState(() => _showPast = false),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'MY CARE',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 9),
+                              Text(
+                                'Your appointments',
+                                key: const Key('appointments-title'),
+                                style: Theme.of(context).textTheme.displaySmall,
+                              ),
+                            ],
                           ),
                         ),
-                        Expanded(
-                          child: _TabButton(
-                            key: const Key('appointments-past-tab'),
-                            label: 'Past',
-                            count: pastCount,
-                            selected: _showPast,
-                            onTap: () => setState(() => _showPast = true),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppColors.blueSoft,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.calendar_month_rounded,
+                            color: Color(0xFF5276D8),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _showPast ? 'Previous visits' : 'Coming up',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _showPast
-                        ? 'A record of your recent appointment requests.'
-                        : 'Everything you need for your next visit.',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF1EF),
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _TabButton(
+                              key: const Key('appointments-upcoming-tab'),
+                              label: 'Upcoming',
+                              count: upcomingCount,
+                              selected: !_showPast,
+                              onTap: () => setState(() => _showPast = false),
+                            ),
+                          ),
+                          Expanded(
+                            child: _TabButton(
+                              key: const Key('appointments-past-tab'),
+                              label: 'Past',
+                              count: pastCount,
+                              selected: _showPast,
+                              onTap: () => setState(() => _showPast = true),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                ],
-              ),
-            ),
-            if (visible.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: _EmptyAppointments(),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(22, 0, 22, 118),
-                sliver: SliverList.separated(
-                  itemCount: visible.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, index) => AppointmentCard(
-                    appointment: visible[index],
-                    onTap: () => _openAppointment(visible[index]),
-                  ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _showPast ? 'Previous visits' : 'Coming up',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _showPast
+                          ? 'A record of your recent appointment requests.'
+                          : 'Everything you need for your next visit.',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    if (_isLoading)
+                      const LinearProgressIndicator(
+                        key: Key('appointments-loading'),
+                        minHeight: 3,
+                        borderRadius: BorderRadius.all(Radius.circular(99)),
+                      ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      _AppointmentsError(
+                        message: _error!,
+                        onRetry: _loadAppointments,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-          ],
+              if (visible.isEmpty && _isLoading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _LoadingAppointments(),
+                )
+              else if (visible.isEmpty && _error == null)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyAppointments(),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 118),
+                  sliver: SliverList.separated(
+                    itemCount: visible.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, index) => AppointmentCard(
+                      appointment: visible[index],
+                      onTap: () => _openAppointment(visible[index]),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _LoadingAppointments extends StatelessWidget {
+  const _LoadingAppointments();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.only(bottom: 100),
+    child: Center(
+      child: Text(
+        'Loading your care schedule…',
+        style: TextStyle(color: AppColors.muted),
+      ),
+    ),
+  );
+}
+
+class _AppointmentsError extends StatelessWidget {
+  const _AppointmentsError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('appointments-error'),
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1EE),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.cloud_off_rounded, color: Color(0xFFB84C4C)),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: 11, height: 1.4),
+          ),
+        ),
+        TextButton(onPressed: onRetry, child: const Text('Retry')),
+      ],
+    ),
+  );
 }
 
 class _TabButton extends StatelessWidget {

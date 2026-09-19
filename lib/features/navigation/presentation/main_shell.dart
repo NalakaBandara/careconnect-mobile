@@ -1,5 +1,6 @@
 import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
@@ -31,6 +32,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   late int _selectedIndex = widget.initialIndex;
   ApiClient? _apiClient;
+  AppointmentsDataSource? _appointmentsRepository;
   FindCareDataSource? _findCareRepository;
   NotificationsRepository? _notificationsRepository;
 
@@ -40,6 +42,7 @@ class _MainShellState extends State<MainShell> {
     final tokenProvider = widget.accessTokenProvider;
     if (tokenProvider != null) {
       _apiClient = ApiClient(accessTokenProvider: tokenProvider);
+      _appointmentsRepository = AppointmentsRepository(_apiClient!);
       _findCareRepository = FindCareRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
     }
@@ -73,7 +76,10 @@ class _MainShellState extends State<MainShell> {
         repository: _findCareRepository,
         onNotifications: _openNotifications,
       ),
-      const AppointmentsScreen(key: ValueKey('appointments-page')),
+      AppointmentsScreen(
+        key: const ValueKey('appointments-page'),
+        repository: _appointmentsRepository,
+      ),
       ProfileScreen(
         user: widget.user,
         onLogout: widget.onLogout,

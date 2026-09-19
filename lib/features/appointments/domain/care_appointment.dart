@@ -53,7 +53,7 @@ class AppointmentDoctor {
 
   factory AppointmentDoctor.fromJson(Map<String, dynamic> json) =>
       AppointmentDoctor(
-        id: json['id'] as String,
+        id: json['id'].toString(),
         firstName: json['firstName'] as String? ?? '',
         lastName: json['lastName'] as String? ?? '',
         licenseNumber: json['licenseNumber'] as String?,
@@ -66,7 +66,10 @@ class AppointmentClinic {
   final String name;
 
   factory AppointmentClinic.fromJson(Map<String, dynamic> json) =>
-      AppointmentClinic(id: json['id'] as String, name: json['name'] as String);
+      AppointmentClinic(
+        id: json['id'].toString(),
+        name: json['name'] as String? ?? 'Clinic',
+      );
 }
 
 class AppointmentService {
@@ -81,8 +84,8 @@ class AppointmentService {
 
   factory AppointmentService.fromJson(Map<String, dynamic> json) =>
       AppointmentService(
-        id: json['id'] as String,
-        name: json['name'] as String,
+        id: json['id'].toString(),
+        name: json['name'] as String? ?? 'Healthcare service',
         durationMinutes: json['durationMinutes'] as int? ?? 0,
       );
 }
@@ -159,14 +162,14 @@ class CareAppointment {
   factory CareAppointment.fromJson(
     Map<String, dynamic> json,
   ) => CareAppointment(
-    id: json['id'] as String,
-    patientId: json['patientId'] as String,
+    id: json['id'].toString(),
+    patientId: json['patientId'].toString(),
     doctor: AppointmentDoctor.fromJson(json['doctor'] as Map<String, dynamic>),
     clinic: AppointmentClinic.fromJson(json['clinic'] as Map<String, dynamic>),
     service: AppointmentService.fromJson(
       json['service'] as Map<String, dynamic>,
     ),
-    doctorScheduleId: json['doctorScheduleId'] as String,
+    doctorScheduleId: json['doctorScheduleId'].toString(),
     appointmentDate: json['appointmentDate'] as String,
     startTime: json['startTime'] as String,
     endTime: json['endTime'] as String,

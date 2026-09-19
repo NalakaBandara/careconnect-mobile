@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_ui.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/cancel_appointment_screen.dart';
@@ -11,10 +12,12 @@ class AppointmentDetailScreen extends StatefulWidget {
     super.key,
     required this.initialAppointment,
     required this.onChanged,
+    this.repository,
   });
 
   final CareAppointment initialAppointment;
   final ValueChanged<CareAppointment> onChanged;
+  final AppointmentsDataSource? repository;
 
   @override
   State<AppointmentDetailScreen> createState() =>
@@ -23,6 +26,36 @@ class AppointmentDetailScreen extends StatefulWidget {
 
 class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   late CareAppointment _appointment = widget.initialAppointment;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.repository != null) _refreshAppointment();
+  }
+
+  Future<void> _refreshAppointment() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final appointment = await widget.repository!.getAppointment(
+        _appointment.id,
+      );
+      if (!mounted) return;
+      setState(() => _appointment = appointment);
+      widget.onChanged(appointment);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'The latest appointment details could not be loaded.';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _reschedule() async {
     final updated = await Navigator.of(context).push<CareAppointment>(
@@ -38,7 +71,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Future<void> _cancel() async {
     final updated = await Navigator.of(context).push<CareAppointment>(
       MaterialPageRoute(
-        builder: (_) => CancelAppointmentScreen(appointment: _appointment),
+        builder: (_) => CancelAppointmentScreen(
+          appointment: _appointment,
+          repository: widget.repository,
+        ),
       ),
     );
     if (updated == null || !mounted) return;
@@ -56,6 +92,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
         children: [
           _AppointmentHero(appointment: appointment),
+          if (_isLoading) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(minHeight: 3),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            _DetailError(message: _error!, onRetry: _refreshAppointment),
+          ],
           const SizedBox(height: 18),
           _InformationCard(appointment: appointment),
           if (appointment.reason?.isNotEmpty ?? false) ...[
@@ -67,20 +111,28 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
             _CheckInCard(
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => CheckInScreen(appointment: appointment),
+                  builder: (_) => CheckInScreen(
+                    appointment: appointment,
+                    repository: widget.repository,
+                  ),
                 ),
               ),
             ),
           ],
           if (appointment.canChange) ...[
             const SizedBox(height: 26),
-            FilledButton.icon(
-              key: const Key('reschedule-appointment-button'),
-              onPressed: _reschedule,
-              icon: const Icon(Icons.edit_calendar_outlined),
-              label: const Text('Choose another time'),
-            ),
-            const SizedBox(height: 10),
+            if (widget.repository == null) ...[
+              FilledButton.icon(
+                key: const Key('reschedule-appointment-button'),
+                onPressed: _reschedule,
+                icon: const Icon(Icons.edit_calendar_outlined),
+                label: const Text('Choose another time'),
+              ),
+              const SizedBox(height: 10),
+            ] else ...[
+              const _RescheduleUnavailable(),
+              const SizedBox(height: 10),
+            ],
             OutlinedButton.icon(
               key: const Key('cancel-appointment-button'),
               onPressed: _cancel,
@@ -92,6 +144,58 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       ),
     );
   }
+}
+
+class _DetailError extends StatelessWidget {
+  const _DetailError({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1EE),
+      borderRadius: BorderRadius.circular(17),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.sync_problem_rounded, color: Color(0xFFB84C4C)),
+        const SizedBox(width: 10),
+        Expanded(child: Text(message, style: const TextStyle(fontSize: 12))),
+        TextButton(onPressed: onRetry, child: const Text('Retry')),
+      ],
+    ),
+  );
+}
+
+class _RescheduleUnavailable extends StatelessWidget {
+  const _RescheduleUnavailable();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1D2),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.info_outline_rounded, color: Color(0xFF93600A)),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Online rescheduling will be enabled when the backend accepts a new date and time.',
+            style: TextStyle(
+              color: Color(0xFF76500D),
+              fontSize: 11,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _AppointmentHero extends StatelessWidget {

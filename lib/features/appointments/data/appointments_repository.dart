@@ -3,11 +3,26 @@ import 'package:careconnect_mobile/core/network/api_endpoints.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 
-class AppointmentsRepository {
+abstract interface class AppointmentsDataSource {
+  Future<List<CareAppointment>> getMyAppointments({
+    AppointmentStatus? status,
+    String? fromDate,
+    String? toDate,
+  });
+
+  Future<CareAppointment> getAppointment(String id);
+
+  Future<CareAppointment> cancelAppointment(String id, {String? reason});
+
+  Future<CheckInRecord> getCheckIn(String appointmentId);
+}
+
+class AppointmentsRepository implements AppointmentsDataSource {
   const AppointmentsRepository(this._client);
 
   final ApiClient _client;
 
+  @override
   Future<List<CareAppointment>> getMyAppointments({
     AppointmentStatus? status,
     String? fromDate,
@@ -28,11 +43,13 @@ class AppointmentsRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<CareAppointment> getAppointment(String id) async {
     final response = await _client.get(ApiEndpoints.appointment(id));
     return CareAppointment.fromJson(response as Map<String, dynamic>);
   }
 
+  @override
   Future<CareAppointment> cancelAppointment(String id, {String? reason}) async {
     final response = await _client.patch(
       ApiEndpoints.appointment(id),
@@ -44,6 +61,7 @@ class AppointmentsRepository {
     return CareAppointment.fromJson(response as Map<String, dynamic>);
   }
 
+  @override
   Future<CheckInRecord> getCheckIn(String appointmentId) async {
     final response = await _client.get(
       ApiEndpoints.appointmentCheckIn(appointmentId),
