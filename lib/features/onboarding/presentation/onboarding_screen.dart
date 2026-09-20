@@ -4,7 +4,9 @@ import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({this.authBuilder, super.key});
+
+  final WidgetBuilder? authBuilder;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -54,7 +56,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _finish() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+      MaterialPageRoute<void>(
+        builder: widget.authBuilder ?? (_) => const WelcomeScreen(),
+      ),
     );
   }
 

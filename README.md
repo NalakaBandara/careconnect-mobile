@@ -8,21 +8,14 @@ No credentials or environment-specific values are committed to this project.
 Use CareConnect-specific values only.
 
 ```bash
-CARECONNECT_AUTH0_DOMAIN=your-careconnect-domain.auth0.com \
 flutter run \
-  --dart-define=CARECONNECT_AUTH0_DOMAIN=your-careconnect-domain.auth0.com \
-  --dart-define=CARECONNECT_AUTH0_CLIENT_ID=your-careconnect-client-id \
-  --dart-define=CARECONNECT_AUTH0_AUDIENCE=your-careconnect-api-audience \
   --dart-define=CARECONNECT_API_BASE_URL=http://10.0.2.2:3000
 ```
 
-Configure this Android callback in the CareConnect Auth0 Native application:
-
-```text
-careconnect://YOUR_CARECONNECT_AUTH0_DOMAIN/android/com.example.careconnect_mobile/callback
-```
-
-Add the same URL to **Allowed Callback URLs** and **Allowed Logout URLs**.
+Authentication uses the CareConnect API email/password endpoints. The signed
+access token is stored using the platform's encrypted secure storage. Never add
+a server JWT secret, password, or access token to this repository or to a
+`--dart-define` value.
 
 ## Debug API logs
 

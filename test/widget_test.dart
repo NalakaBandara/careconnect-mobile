@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/app/app.dart';
+import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
@@ -8,6 +9,9 @@ import 'package:careconnect_mobile/features/appointments/domain/check_in_record.
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
+import 'package:careconnect_mobile/features/auth/data/auth_service.dart';
+import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
+import 'package:careconnect_mobile/features/auth/presentation/welcome_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
@@ -18,9 +22,7 @@ import 'package:careconnect_mobile/features/notifications/presentation/notificat
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
-import 'package:careconnect_mobile/features/profile/domain/profile_creation_request.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
-import 'package:careconnect_mobile/features/profile/presentation/profile_setup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -68,7 +70,14 @@ void main() {
 
   testWidgets('moves through onboarding and opens auth entry', (tester) async {
     usePhoneSize(tester);
-    await tester.pumpWidget(const MaterialApp(home: OnboardingScreen()));
+    final auth = _FakeAuthDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingScreen(
+          authBuilder: (_) => WelcomeScreen(authService: auth),
+        ),
+      ),
+    );
 
     expect(
       find.text('The right care,\nwithout the guesswork.'),
@@ -89,20 +98,126 @@ void main() {
     expect(find.text('Your care starts here.'), findsOneWidget);
   });
 
-  testWidgets('does not attempt sign in without CareConnect Auth0 config', (
-    tester,
-  ) async {
+  testWidgets('signs in with the CareConnect API account flow', (tester) async {
     usePhoneSize(tester);
-    await tester.pumpWidget(const CareConnectApp());
-    await tester.pump(const Duration(milliseconds: 1800));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('skip-onboarding')));
+    final auth = _FakeAuthDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: WelcomeScreen(authService: auth),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('sign-in-button')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('login-screen')), findsOneWidget);
 
-    expect(find.text('CareConnect setup required'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('auth-email-field')),
+      'AMARA@EXAMPLE.COM',
+    );
+    await tester.enterText(
+      find.byKey(const Key('auth-password-field')),
+      'private-password',
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(auth.loginCalls, 1);
+    expect(auth.lastEmail, 'AMARA@EXAMPLE.COM');
+    expect(find.byKey(const Key('home-greeting')), findsOneWidget);
+    expect(find.textContaining('Amara'), findsWidgets);
+  });
+
+  testWidgets('registers a patient with the backend contract fields', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final auth = _FakeAuthDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: WelcomeScreen(authService: auth),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('create-account-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('register-screen')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('register-first-name')),
+      'Amara',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register-last-name')),
+      'Silva',
+    );
+    await tester.enterText(
+      find.byKey(const Key('auth-email-field')),
+      'amara@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register-phone-field')),
+      '0771234567',
+    );
+    await tester.enterText(
+      find.byKey(const Key('auth-password-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register-confirm-password')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(auth.registerCalls, 1);
+    expect(auth.lastFirstName, 'Amara');
+    expect(auth.lastPhone, '0771234567');
+    expect(find.byKey(const Key('home-greeting')), findsOneWidget);
+  });
+
+  test('parses the self-hosted JWT authentication response', () {
+    final session = AuthSession.fromJson({
+      'data': {
+        'id': '8',
+        'email': 'amara@example.com',
+        'firstName': 'Amara',
+        'lastName': 'Silva',
+        'status': 'ACTIVE',
+        'roles': ['PATIENT'],
+      },
+      'accessToken': 'signed-jwt',
+    });
+
+    expect(session.accessToken, 'signed-jwt');
+    expect(session.user.id, '8');
+    expect(session.user.roles, ['PATIENT']);
+  });
+
+  test('stores the JWT after sending the backend login contract', () async {
+    final tokenStore = _FakeTokenStore();
+    final apiClient = _FakeAuthApiClient();
+    final service = AuthService(
+      tokenStore: tokenStore,
+      publicClient: apiClient,
+    );
+
+    final session = await service.login(
+      email: ' AMARA@EXAMPLE.COM ',
+      password: 'private-password',
+    );
+
+    expect(apiClient.lastPath, '/api/v1/auth/login');
+    expect(apiClient.lastBody, {
+      'email': 'amara@example.com',
+      'password': 'private-password',
+    });
+    expect(tokenStore.token, 'signed-jwt');
+    expect(session.user.firstName, 'Amara');
   });
 
   testWidgets('shows home dashboard and switches main navigation', (
@@ -562,88 +677,6 @@ void main() {
       'profilePhoto': null,
     });
   });
-
-  testWidgets('creates a CareConnect profile after authenticated sign-up', (
-    tester,
-  ) async {
-    usePhoneSize(tester);
-    ProfileCreationRequest? submitted;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: ProfileSetupScreen(
-          email: 'amara@example.com',
-          displayName: 'Amara Silva',
-          onCreate: (request) async {
-            submitted = request;
-            return CurrentUser(
-              id: '8',
-              email: request.email,
-              firstName: request.firstName,
-              lastName: request.lastName,
-              roles: const ['PATIENT'],
-              dateOfBirth: request.dateOfBirth,
-              phone: request.phone,
-              status: 'ACTIVE',
-            );
-          },
-          homeBuilder: (_, user) => Scaffold(
-            body: Text(
-              'Welcome ${user.firstName}',
-              key: const Key('created-profile-home'),
-            ),
-          ),
-          onExit: (_) async {},
-        ),
-      ),
-    );
-
-    expect(find.byKey(const Key('profile-setup-screen')), findsOneWidget);
-    await tester.enterText(
-      find.byKey(const Key('profile-setup-phone')),
-      '0771234567',
-    );
-    await tester.tap(find.byKey(const Key('profile-setup-date-of-birth')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-    final submit = find.byKey(const Key('create-profile-submit'));
-    await tester.drag(
-      find.byKey(const Key('profile-setup-screen')),
-      const Offset(0, -520),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('created-profile-home')), findsOneWidget);
-    expect(submitted?.toJson(), {
-      'firstName': 'Amara',
-      'lastName': 'Silva',
-      'email': 'amara@example.com',
-      'dateOfBirth': '1990-01-01',
-      'phone': '0771234567',
-    });
-  });
-
-  test('profile creation payload follows the updated backend contract', () {
-    final request = ProfileCreationRequest(
-      firstName: ' Amara ',
-      lastName: ' Silva ',
-      email: 'AMARA@EXAMPLE.COM ',
-      dateOfBirth: DateTime(1991, 3, 14),
-      phone: ' 0771234567 ',
-    );
-
-    expect(request.toJson(), {
-      'firstName': 'Amara',
-      'lastName': 'Silva',
-      'email': 'amara@example.com',
-      'dateOfBirth': '1991-03-14',
-      'phone': '0771234567',
-    });
-  });
 }
 
 class _FakeFindCareRepository implements FindCareDataSource {
@@ -771,5 +804,104 @@ class _FakeUserDataSource implements UserDataSource {
     updateCalls++;
     user = updated;
     return user;
+  }
+}
+
+class _FakeAuthDataSource implements AuthDataSource {
+  int loginCalls = 0;
+  int registerCalls = 0;
+  int logoutCalls = 0;
+  String? lastEmail;
+  String? lastFirstName;
+  String? lastPhone;
+
+  static const user = CurrentUser(
+    id: '8',
+    email: 'amara@example.com',
+    firstName: 'Amara',
+    lastName: 'Silva',
+    roles: ['PATIENT'],
+    status: 'ACTIVE',
+  );
+
+  static const session = AuthSession(user: user, accessToken: 'test-token');
+
+  @override
+  Future<String?> accessToken() async => session.accessToken;
+
+  @override
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+  }) async {
+    loginCalls++;
+    lastEmail = email;
+    return session;
+  }
+
+  @override
+  Future<void> logout() async {
+    logoutCalls++;
+  }
+
+  @override
+  Future<AuthSession> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    String? phone,
+  }) async {
+    registerCalls++;
+    lastFirstName = firstName;
+    lastEmail = email;
+    lastPhone = phone;
+    return session;
+  }
+
+  @override
+  Future<AuthSession?> restoreSession() async => null;
+}
+
+class _FakeTokenStore implements TokenStore {
+  String? token;
+
+  @override
+  Future<void> delete() async {
+    token = null;
+  }
+
+  @override
+  Future<String?> read() async => token;
+
+  @override
+  Future<void> write(String token) async {
+    this.token = token;
+  }
+}
+
+class _FakeAuthApiClient extends ApiClient {
+  _FakeAuthApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastPath;
+  Object? lastBody;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> post(String path, {Object? body}) async {
+    lastPath = path;
+    lastBody = body;
+    return {
+      'data': {
+        'id': '8',
+        'email': 'amara@example.com',
+        'firstName': 'Amara',
+        'lastName': 'Silva',
+        'status': 'ACTIVE',
+        'roles': ['PATIENT'],
+      },
+      'accessToken': 'signed-jwt',
+    };
   }
 }

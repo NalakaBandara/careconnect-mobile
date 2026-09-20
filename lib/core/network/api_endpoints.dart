@@ -1,6 +1,9 @@
 abstract final class ApiEndpoints {
   static const apiVersion = '/api/v1';
 
+  static const auth = '$apiVersion/auth';
+  static const login = '$auth/login';
+  static const register = '$auth/register';
   static const currentUser = '$apiVersion/users/me';
   static const clinics = '$apiVersion/clinics';
   static const doctors = '$apiVersion/doctors';

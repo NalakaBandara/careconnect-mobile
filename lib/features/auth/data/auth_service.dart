@@ -1,66 +1,134 @@
-import 'package:auth0_flutter/auth0_flutter.dart';
-import 'package:careconnect_mobile/core/config/app_config.dart';
+import 'package:careconnect_mobile/core/network/api_client.dart';
+import 'package:careconnect_mobile/core/network/api_endpoints.dart';
+import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
+import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class AuthConfigurationException implements Exception {
-  const AuthConfigurationException();
+abstract interface class TokenStore {
+  Future<String?> read();
+
+  Future<void> write(String token);
+
+  Future<void> delete();
 }
 
-class AuthCancelledException implements Exception {
-  const AuthCancelledException();
+class SecureTokenStore implements TokenStore {
+  SecureTokenStore({FlutterSecureStorage? storage})
+    : _storage = storage ?? FlutterSecureStorage();
+
+  static const _accessTokenKey = 'careconnect_access_token';
+  final FlutterSecureStorage _storage;
+
+  @override
+  Future<String?> read() => _storage.read(key: _accessTokenKey);
+
+  @override
+  Future<void> write(String token) =>
+      _storage.write(key: _accessTokenKey, value: token);
+
+  @override
+  Future<void> delete() => _storage.delete(key: _accessTokenKey);
 }
 
-class AuthService {
-  AuthService() {
-    if (!AppConfig.isAuth0Configured) {
-      throw const AuthConfigurationException();
-    }
-    _auth0 = Auth0(AppConfig.auth0Domain, AppConfig.auth0ClientId);
+abstract interface class AuthDataSource {
+  Future<AuthSession?> restoreSession();
+
+  Future<AuthSession> login({required String email, required String password});
+
+  Future<AuthSession> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    String? phone,
+  });
+
+  Future<String?> accessToken();
+
+  Future<void> logout();
+}
+
+class AuthService implements AuthDataSource {
+  AuthService({TokenStore? tokenStore, ApiClient? publicClient})
+    : _tokenStore = tokenStore ?? SecureTokenStore(),
+      _publicClient =
+          publicClient ?? ApiClient(accessTokenProvider: _noAccessToken) {
+    _protectedClient = ApiClient(accessTokenProvider: _tokenStore.read);
   }
 
-  late final Auth0 _auth0;
+  final TokenStore _tokenStore;
+  final ApiClient _publicClient;
+  late final ApiClient _protectedClient;
 
+  static Future<String?> _noAccessToken() async => null;
+
+  @override
   Future<AuthSession?> restoreSession() async {
-    final hasCredentials = await _auth0.credentialsManager.hasValidCredentials(
-      minTtl: 60,
-    );
-    if (!hasCredentials) return null;
+    final token = await _tokenStore.read();
+    if (token == null || token.isEmpty) return null;
 
-    final credentials = await _auth0.credentialsManager.credentials(minTtl: 60);
-    return _toSession(credentials);
-  }
-
-  Future<AuthSession> login({bool signUp = false}) async {
     try {
-      final credentials = await _auth0
-          .webAuthentication(scheme: AppConfig.auth0Scheme)
-          .login(
-            audience: AppConfig.auth0Audience,
-            scopes: const {'openid', 'profile', 'email', 'offline_access'},
-            parameters: signUp ? const {'screen_hint': 'signup'} : const {},
-          );
-      return _toSession(credentials);
-    } on WebAuthenticationException catch (error) {
-      if (error.isUserCancelledException) throw const AuthCancelledException();
+      final response = await _protectedClient.get(ApiEndpoints.currentUser);
+      if (response case {'data': final Map<String, dynamic> data}) {
+        return AuthSession(
+          user: CurrentUser.fromJson(data),
+          accessToken: token,
+        );
+      }
+      throw const FormatException('Missing user data');
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 404) {
+        await _tokenStore.delete();
+        return null;
+      }
       rethrow;
     }
   }
 
-  Future<String?> accessToken() async {
-    final hasCredentials = await _auth0.credentialsManager.hasValidCredentials(
-      minTtl: 60,
-    );
-    if (!hasCredentials) return null;
-    final credentials = await _auth0.credentialsManager.credentials(minTtl: 60);
-    return credentials.accessToken;
+  @override
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+  }) => _authenticate(
+    ApiEndpoints.login,
+    body: {'email': email.trim().toLowerCase(), 'password': password},
+  );
+
+  @override
+  Future<AuthSession> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    String? phone,
+  }) => _authenticate(
+    ApiEndpoints.register,
+    body: {
+      'firstName': firstName.trim(),
+      'lastName': lastName.trim(),
+      'email': email.trim().toLowerCase(),
+      'password': password,
+      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+    },
+  );
+
+  Future<AuthSession> _authenticate(
+    String endpoint, {
+    required Map<String, dynamic> body,
+  }) async {
+    final response = await _publicClient.post(endpoint, body: body);
+    if (response is! Map<String, dynamic>) {
+      throw const FormatException('Invalid authentication response');
+    }
+    final session = AuthSession.fromJson(response);
+    await _tokenStore.write(session.accessToken);
+    return session;
   }
 
-  Future<void> logout() =>
-      _auth0.webAuthentication(scheme: AppConfig.auth0Scheme).logout();
+  @override
+  Future<String?> accessToken() => _tokenStore.read();
 
-  AuthSession _toSession(Credentials credentials) => AuthSession(
-    email: credentials.user.email,
-    displayName: credentials.user.name,
-    pictureUrl: credentials.user.pictureUrl,
-  );
+  @override
+  Future<void> logout() => _tokenStore.delete();
 }

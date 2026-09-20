@@ -28,9 +28,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["auth0Domain"] =
-            System.getenv("CARECONNECT_AUTH0_DOMAIN") ?: "careconnect.invalid"
-        manifestPlaceholders["auth0Scheme"] = "careconnect"
     }
 
     buildTypes {

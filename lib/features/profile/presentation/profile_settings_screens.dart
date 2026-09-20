@@ -98,7 +98,7 @@ class SecurityScreen extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'CareConnect uses Auth0 to manage passwords and secure account access.',
+                'CareConnect protects your account with an encrypted mobile session and a securely hashed server password.',
                 style: TextStyle(color: Color(0xFFD8F3EC), height: 1.45),
               ),
             ],
@@ -108,7 +108,7 @@ class SecurityScreen extends StatelessWidget {
         const _InformationTile(
           icon: Icons.password_rounded,
           title: 'Password changes',
-          caption: 'Managed securely through your Auth0 account',
+          caption: 'Password management will appear when the API supports it',
         ),
         const SizedBox(height: 10),
         const _InformationTile(
@@ -119,7 +119,7 @@ class SecurityScreen extends StatelessWidget {
         const SizedBox(height: 18),
         const _InfoNotice(
           text:
-              'CareConnect never stores your password in the mobile application or its own profile API.',
+              'CareConnect never stores your password in the mobile application. Only the signed access token is kept in encrypted device storage.',
         ),
       ],
     ),
