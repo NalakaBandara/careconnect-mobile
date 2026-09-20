@@ -17,6 +17,7 @@ import 'package:careconnect_mobile/features/notifications/domain/care_notificati
 import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
+import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
 import 'package:careconnect_mobile/features/profile/domain/profile_creation_request.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_setup_screen.dart';
@@ -506,6 +507,41 @@ void main() {
     expect(find.byKey(const Key('support-screen')), findsOneWidget);
   });
 
+  testWidgets('refreshes and saves an authenticated user profile', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeUserDataSource();
+    CurrentUser? propagated;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProfileScreen(
+          user: repository.user,
+          repository: repository,
+          onUserChanged: (user) => propagated = user,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.getCalls, 1);
+    expect(find.text('Amara Silva'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('edit-profile-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('profile-first-name-field')),
+      'Ayesha',
+    );
+    await tester.tap(find.byKey(const Key('save-profile-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.updateCalls, 1);
+    expect(repository.user.firstName, 'Ayesha');
+    expect(propagated?.firstName, 'Ayesha');
+    expect(find.text('Ayesha Silva'), findsOneWidget);
+  });
+
   test('profile update payload follows the backend contract', () {
     final user = CurrentUser(
       id: '8',
@@ -708,4 +744,32 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
     method: 'RECEPTION_QR',
     queueNumber: 7,
   );
+}
+
+class _FakeUserDataSource implements UserDataSource {
+  CurrentUser user = CurrentUser(
+    id: '8',
+    email: 'amara@example.com',
+    firstName: 'Amara',
+    lastName: 'Silva',
+    roles: const ['PATIENT'],
+    dateOfBirth: DateTime(1991, 3, 14),
+    phone: '0771234567',
+    status: 'ACTIVE',
+  );
+  int getCalls = 0;
+  int updateCalls = 0;
+
+  @override
+  Future<CurrentUser> getCurrentUser() async {
+    getCalls++;
+    return user;
+  }
+
+  @override
+  Future<CurrentUser> updateCurrentUser(CurrentUser updated) async {
+    updateCalls++;
+    user = updated;
+    return user;
+  }
 }

@@ -7,6 +7,7 @@ import 'package:careconnect_mobile/features/find_care/presentation/find_care_scr
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
 import 'package:careconnect_mobile/features/notifications/data/notifications_repository.dart';
 import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
+import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -35,16 +36,20 @@ class _MainShellState extends State<MainShell> {
   AppointmentsDataSource? _appointmentsRepository;
   FindCareDataSource? _findCareRepository;
   NotificationsRepository? _notificationsRepository;
+  UserDataSource? _userRepository;
+  late CurrentUser? _user;
 
   @override
   void initState() {
     super.initState();
+    _user = widget.user;
     final tokenProvider = widget.accessTokenProvider;
     if (tokenProvider != null) {
       _apiClient = ApiClient(accessTokenProvider: tokenProvider);
       _appointmentsRepository = AppointmentsRepository(_apiClient!);
       _findCareRepository = FindCareRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
+      _userRepository = UserRepository(_apiClient!);
     }
   }
 
@@ -56,6 +61,8 @@ class _MainShellState extends State<MainShell> {
 
   void _select(int index) => setState(() => _selectedIndex = index);
 
+  void _updateUser(CurrentUser user) => setState(() => _user = user);
+
   void _openNotifications() => Navigator.of(context).push<void>(
     MaterialPageRoute(
       builder: (_) => NotificationsScreen(repository: _notificationsRepository),
@@ -66,7 +73,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(
-        firstName: widget.user?.firstName,
+        firstName: _user?.firstName,
         onFindCare: () => _select(1),
         onAppointments: () => _select(2),
         onProfile: () => _select(3),
@@ -81,7 +88,9 @@ class _MainShellState extends State<MainShell> {
         repository: _appointmentsRepository,
       ),
       ProfileScreen(
-        user: widget.user,
+        user: _user,
+        repository: _userRepository,
+        onUserChanged: _updateUser,
         onLogout: widget.onLogout,
         onNotifications: _openNotifications,
       ),

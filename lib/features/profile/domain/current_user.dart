@@ -52,8 +52,8 @@ class CurrentUser {
   };
 
   factory CurrentUser.fromJson(Map<String, dynamic> json) => CurrentUser(
-    id: json['id'] as String,
-    email: json['email'] as String,
+    id: json['id'].toString(),
+    email: json['email'] as String? ?? '',
     firstName: json['firstName'] as String? ?? '',
     lastName: json['lastName'] as String? ?? '',
     roles: (json['roles'] as List<dynamic>? ?? const [])

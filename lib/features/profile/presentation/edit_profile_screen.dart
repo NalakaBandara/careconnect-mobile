@@ -7,9 +7,11 @@ class EditProfileScreen extends StatefulWidget {
     super.key,
     required this.user,
     required this.isPreview,
+    this.onSave,
   });
   final CurrentUser user;
   final bool isPreview;
+  final Future<CurrentUser> Function(CurrentUser user)? onSave;
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -23,6 +25,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final _dateOfBirth = TextEditingController(
     text: _formatDate(widget.user.dateOfBirth),
   );
+  bool _isSaving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -47,7 +51,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (selected != null) _dateOfBirth.text = _formatDate(selected);
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final updated = widget.user.copyWith(
       firstName: _firstName.text.trim(),
@@ -55,7 +59,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       phone: _phone.text.trim(),
       dateOfBirth: DateTime.tryParse(_dateOfBirth.text),
     );
-    Navigator.of(context).pop(updated);
+    if (widget.onSave == null) {
+      Navigator.of(context).pop(updated);
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+    try {
+      final saved = await widget.onSave!(updated);
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      Navigator.of(context).pop(saved);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error =
+            'Your changes could not be saved. Check your connection and try again.';
+      });
+    }
   }
 
   @override
@@ -157,11 +182,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
           ],
+          if (_error != null) ...[
+            const SizedBox(height: 18),
+            Container(
+              key: const Key('profile-save-error'),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1EE),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _error!,
+                style: const TextStyle(
+                  color: Color(0xFF9C3F3F),
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           FilledButton(
             key: const Key('save-profile-button'),
-            onPressed: _save,
-            child: const Text('Save changes'),
+            onPressed: _isSaving ? null : _save,
+            child: Text(_isSaving ? 'Saving…' : 'Save changes'),
           ),
         ],
       ),
