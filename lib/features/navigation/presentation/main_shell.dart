@@ -2,6 +2,7 @@ import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
+import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
@@ -38,6 +39,7 @@ class _MainShellState extends State<MainShell> {
   ApiClient? _apiClient;
   AppointmentsDataSource? _appointmentsRepository;
   FindCareDataSource? _findCareRepository;
+  AppointmentBookingDataSource? _bookingRepository;
   NotificationsRepository? _notificationsRepository;
   UserDataSource? _userRepository;
   late CurrentUser? _user;
@@ -55,6 +57,7 @@ class _MainShellState extends State<MainShell> {
       );
       _appointmentsRepository = AppointmentsRepository(_apiClient!);
       _findCareRepository = FindCareRepository(_apiClient!);
+      _bookingRepository = AppointmentBookingRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
       _userRepository = UserRepository(_apiClient!);
     }
@@ -105,6 +108,8 @@ class _MainShellState extends State<MainShell> {
       if (_loadedIndexes.contains(1))
         FindCareScreen(
           repository: _findCareRepository,
+          bookingRepository: _bookingRepository,
+          currentUser: _user,
           onNotifications: _openNotifications,
         )
       else

@@ -81,6 +81,7 @@ class FindCareRepository implements FindCareDataSource {
     required String clinicId,
     required DateTime date,
     String? serviceId,
+    String? doctorScheduleId,
   }) async {
     final isoDate = _isoDate(date);
     final response = await _client.get(
@@ -95,13 +96,21 @@ class FindCareRepository implements FindCareDataSource {
     final slots = (body['slots'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .where((slot) => slot['available'] == true)
+        .toList(growable: false);
+    final times = slots
         .map((slot) => slot['startTime'] as String)
         .toList(growable: false);
+    final endTimes = {
+      for (final slot in slots)
+        slot['startTime'] as String: slot['endTime'] as String,
+    };
     return CareAvailabilityPreview(
       day: _dayLabel(date),
       date: '${_months[date.month - 1]} ${date.day}',
       isoDate: isoDate,
-      times: slots,
+      times: times,
+      doctorScheduleId: doctorScheduleId,
+      endTimes: endTimes,
     );
   }
 
@@ -130,24 +139,58 @@ class FindCareRepository implements FindCareDataSource {
     required String clinicId,
     int days = 7,
   }) async {
+    final scheduleResponse = await _client.get(
+      ApiEndpoints.doctorSchedules(doctorId),
+      queryParameters: {'clinicId': clinicId},
+    );
+    final schedules = _listFromResponse(scheduleResponse)
+        .map(_DoctorSchedule.fromJson)
+        .where((schedule) => schedule.isActive)
+        .toList(growable: false);
     final today = DateTime.now();
     final dates = List.generate(
       days,
       (index) => DateTime(today.year, today.month, today.day + index),
     );
     final availability = await Future.wait(
-      dates.map(
-        (date) => getAvailableSlots(
+      dates.map((date) {
+        final matchingSchedules = schedules
+            .where((schedule) => schedule.dayOfWeek == _apiWeekday(date))
+            .toList(growable: false);
+        final scheduleId = matchingSchedules.length == 1
+            ? matchingSchedules.single.id
+            : null;
+        return getAvailableSlots(
           doctorId: doctorId,
           clinicId: clinicId,
           date: date,
-        ),
-      ),
+          doctorScheduleId: scheduleId,
+        );
+      }),
     );
     return availability
-        .where((day) => day.times.isNotEmpty)
+        .where((day) => day.times.isNotEmpty && day.doctorScheduleId != null)
         .toList(growable: false);
   }
+}
+
+class _DoctorSchedule {
+  const _DoctorSchedule({
+    required this.id,
+    required this.dayOfWeek,
+    required this.isActive,
+  });
+
+  final String id;
+  final String dayOfWeek;
+  final bool isActive;
+
+  factory _DoctorSchedule.fromJson(Map<String, dynamic> json) =>
+      _DoctorSchedule(
+        id: json['id'].toString(),
+        dayOfWeek: json['dayOfWeek'] as String? ?? '',
+        isActive: json['isActive'] as bool? ?? false,
+      );
 }
 
 List<Map<String, dynamic>> _listFromResponse(Object? response) {
@@ -171,6 +214,16 @@ String _dayLabel(DateTime date) {
   if (difference == 1) return 'Tomorrow';
   return _weekdays[date.weekday - 1];
 }
+
+String _apiWeekday(DateTime date) => const [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+][date.weekday - 1];
 
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _months = [

@@ -9,6 +9,7 @@ import 'package:careconnect_mobile/features/appointments/domain/care_appointment
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
+import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
 import 'package:careconnect_mobile/features/auth/data/auth_service.dart';
 import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
@@ -532,6 +533,28 @@ void main() {
     expect(slot, findsOneWidget);
   });
 
+  test('matches available slots to one unambiguous doctor schedule', () async {
+    final client = _FakeAvailabilityApiClient();
+    final repository = FindCareRepository(client);
+
+    final availability = await repository.getUpcomingAvailability(
+      doctorId: '22',
+      clinicId: '7',
+      days: 2,
+    );
+
+    expect(client.requestedPaths.first, '/api/v1/doctors/22/schedules');
+    expect(
+      client.requestedPaths
+          .where((path) => path == '/api/v1/doctors/22/available-slots')
+          .length,
+      2,
+    );
+    expect(availability, hasLength(2));
+    expect(availability.every((day) => day.doctorScheduleId != null), isTrue);
+    expect(availability.first.endTimeFor('09:30'), '09:50');
+  });
+
   test('parses the backend doctor directory contract', () {
     final professional = CareProfessional.fromJson({
       'id': '22',
@@ -589,6 +612,83 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('booking-confirmation')), findsOneWidget);
     expect(find.text('Your appointment request is in'), findsOneWidget);
+  });
+
+  testWidgets('creates a real appointment with an exact backend slot', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final bookingRepository = _FakeBookingDataSource();
+    final professional = FindCarePreviewData.professionals.first.copyWith(
+      availability: const [
+        CareAvailabilityPreview(
+          day: 'Today',
+          date: 'Sep 21',
+          isoDate: '2026-09-21',
+          times: ['09:30'],
+          doctorScheduleId: '15',
+          endTimes: {'09:30': '09:50'},
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: BookingFlowScreen(
+          professional: professional,
+          repository: bookingRepository,
+          currentUser: const CurrentUser(
+            id: '8',
+            email: 'amara@example.com',
+            firstName: 'Amara',
+            lastName: 'Silva',
+            roles: ['PATIENT'],
+            phone: '0771234567',
+          ),
+          initialTime: '09:30',
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('booking-continue-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Amara Silva'), findsOneWidget);
+    expect(find.text('0771234567'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('booking-continue-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-booking-button')));
+    await tester.pumpAndSettle();
+
+    expect(bookingRepository.createCalls, 1);
+    expect(bookingRepository.lastBooking?.doctorScheduleId, '15');
+    expect(bookingRepository.lastBooking?.endTime, '09:50');
+    expect(find.text('CC-7351-REAL'), findsOneWidget);
+  });
+
+  test('booking repository posts the backend appointment contract', () async {
+    final client = _FakeBookingApiClient();
+    final repository = AppointmentBookingRepository(client);
+    final professional = FindCarePreviewData.professionals.first;
+    final draft = AppointmentBookingDraft(
+      professional: professional,
+      clinic: professional.clinics.first,
+      service: professional.services.first,
+      appointmentDate: '2026-09-21',
+      dateLabel: 'Today, Sep 21',
+      startTime: '09:30',
+      endTime: '09:50',
+      doctorScheduleId: '15',
+      fullName: 'Amara Silva',
+      phoneNumber: '0771234567',
+    );
+
+    final appointment = await repository.createAppointment(draft);
+
+    expect(client.lastPath, '/api/v1/appointments');
+    expect(client.lastBody, draft.toApiJson());
+    expect(appointment.reference, 'CC-7351-REAL');
   });
 
   test('appointment payload follows the backend create contract', () {
@@ -944,6 +1044,52 @@ class _FakeFindCareRepository implements FindCareDataSource {
   ];
 }
 
+class _FakeAvailabilityApiClient extends ApiClient {
+  _FakeAvailabilityApiClient() : super(accessTokenProvider: _noToken);
+
+  final List<String> requestedPaths = [];
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    requestedPaths.add(path);
+    if (path.endsWith('/schedules')) {
+      const weekdays = [
+        'MONDAY',
+        'TUESDAY',
+        'WEDNESDAY',
+        'THURSDAY',
+        'FRIDAY',
+        'SATURDAY',
+        'SUNDAY',
+      ];
+      return {
+        'data': [
+          for (var index = 0; index < weekdays.length; index++)
+            {
+              'id': '${index + 10}',
+              'clinicId': '7',
+              'dayOfWeek': weekdays[index],
+              'startTime': '09:00',
+              'endTime': '17:00',
+              'slotDurationMinutes': 20,
+              'isActive': true,
+            },
+        ],
+      };
+    }
+    return {
+      'slots': [
+        {'startTime': '09:30', 'endTime': '09:50', 'available': true},
+      ],
+    };
+  }
+}
+
 class _FakeAppointmentsDataSource implements AppointmentsDataSource {
   CareAppointment appointment = AppointmentsPreviewData.appointments.first
       .copyWith(bookingReference: 'CC-4821-MEH');
@@ -1018,6 +1164,68 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
       endTime: endTime,
     );
     return appointment;
+  }
+}
+
+class _FakeBookingDataSource implements AppointmentBookingDataSource {
+  int createCalls = 0;
+  AppointmentBookingDraft? lastBooking;
+
+  @override
+  Future<CareAppointment> createAppointment(
+    AppointmentBookingDraft booking,
+  ) async {
+    createCalls++;
+    lastBooking = booking;
+    return AppointmentsPreviewData.appointments.first.copyWith(
+      bookingReference: 'CC-7351-REAL',
+      doctorScheduleId: booking.doctorScheduleId,
+      appointmentDate: booking.appointmentDate,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      status: AppointmentStatus.pending,
+    );
+  }
+}
+
+class _FakeBookingApiClient extends ApiClient {
+  _FakeBookingApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastPath;
+  Object? lastBody;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> post(String path, {Object? body}) async {
+    lastPath = path;
+    lastBody = body;
+    return {
+      'id': '73',
+      'patientId': '8',
+      'doctor': {
+        'id': '1',
+        'firstName': 'Arun',
+        'lastName': 'Mehta',
+        'licenseNumber': 'SLMC 12458',
+      },
+      'clinic': {'id': '1', 'name': 'Northgate Medical Centre'},
+      'service': {
+        'id': '1',
+        'name': 'General consultation',
+        'durationMinutes': 20,
+      },
+      'doctorScheduleId': '15',
+      'appointmentDate': '2026-09-21',
+      'startTime': '09:30',
+      'endTime': '09:50',
+      'status': 'PENDING',
+      'bookingReference': 'CC-7351-REAL',
+      'reason': null,
+      'notes': null,
+      'createdAt': '2026-09-21T08:00:00.000Z',
+      'updatedAt': '2026-09-21T08:00:00.000Z',
+    };
   }
 }
 

@@ -1,14 +1,24 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/professional_profile_screen.dart';
+import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
 
 class FindCareScreen extends StatefulWidget {
-  const FindCareScreen({super.key, this.repository, this.onNotifications});
+  const FindCareScreen({
+    super.key,
+    this.repository,
+    this.bookingRepository,
+    this.currentUser,
+    this.onNotifications,
+  });
 
   final FindCareDataSource? repository;
+  final AppointmentBookingDataSource? bookingRepository;
+  final CurrentUser? currentUser;
   final VoidCallback? onNotifications;
 
   @override
@@ -336,6 +346,8 @@ class _FindCareScreenState extends State<FindCareScreen> {
                             builder: (_) => ProfessionalProfileScreen(
                               professional: results[index],
                               repository: widget.repository,
+                              bookingRepository: widget.bookingRepository,
+                              currentUser: widget.currentUser,
                             ),
                           ),
                         ),

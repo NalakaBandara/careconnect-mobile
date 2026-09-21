@@ -54,12 +54,18 @@ class CareAvailabilityPreview {
     required this.date,
     required this.isoDate,
     required this.times,
+    this.doctorScheduleId,
+    this.endTimes = const {},
   });
 
   final String day;
   final String date;
   final String isoDate;
   final List<String> times;
+  final String? doctorScheduleId;
+  final Map<String, String> endTimes;
+
+  String? endTimeFor(String startTime) => endTimes[startTime];
 }
 
 class CareProfessional {

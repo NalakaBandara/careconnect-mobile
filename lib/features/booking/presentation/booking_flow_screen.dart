@@ -1,19 +1,26 @@
+import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_confirmation_screen.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
+import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
 
 class BookingFlowScreen extends StatefulWidget {
   const BookingFlowScreen({
     super.key,
     required this.professional,
+    this.repository,
+    this.currentUser,
     this.initialClinicIndex = 0,
     this.initialDayIndex = 0,
     this.initialTime,
   });
 
   final CareProfessional professional;
+  final AppointmentBookingDataSource? repository;
+  final CurrentUser? currentUser;
   final int initialClinicIndex;
   final int initialDayIndex;
   final String? initialTime;
@@ -34,12 +41,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   late int _clinicIndex;
   late int _dayIndex;
   String? _time;
+  bool _isSubmitting = false;
+  String? _submitError;
 
   CareProfessional get professional => widget.professional;
   CareService get service => professional.services[_serviceIndex];
   CareClinicSummary get clinic => professional.clinics[_clinicIndex];
   CareAvailabilityPreview get availability =>
       professional.availability[_dayIndex];
+  bool get _isPreview => widget.repository == null;
 
   @override
   void initState() {
@@ -53,6 +63,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       professional.availability.length - 1,
     );
     _time = widget.initialTime;
+    final user = widget.currentUser;
+    if (user != null) {
+      _nameController.text = user.displayName;
+      _phoneController.text = user.phone ?? '';
+    }
   }
 
   @override
@@ -90,11 +105,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       setState(() => _step = 2);
       return;
     }
-    _submitPreviewRequest();
+    _submitRequest();
   }
 
   AppointmentBookingDraft _buildDraft() {
     final duration = service.durationMinutes ?? 20;
+    final scheduleId = availability.doctorScheduleId;
+    final slotEndTime = availability.endTimeFor(_time!);
     return AppointmentBookingDraft(
       professional: professional,
       clinic: clinic,
@@ -102,10 +119,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       appointmentDate: availability.isoDate,
       dateLabel: '${availability.day}, ${availability.date}',
       startTime: _time!,
-      endTime: calculateEndTime(_time!, duration),
-      // Preview only. The current available-slots response does not expose this
-      // required create-appointment field, so no API request is made yet.
-      doctorScheduleId: 'preview-schedule-id',
+      endTime: slotEndTime ?? calculateEndTime(_time!, duration),
+      doctorScheduleId: scheduleId ?? 'preview-schedule-id',
       fullName: _nameController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
       reason: _reasonController.text,
@@ -113,10 +128,49 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     );
   }
 
-  void _submitPreviewRequest() {
+  Future<void> _submitRequest() async {
+    if (_isSubmitting) return;
+    if (!_isPreview &&
+        (availability.doctorScheduleId == null ||
+            availability.endTimeFor(_time!) == null)) {
+      setState(() {
+        _submitError =
+            'This time cannot be booked safely because its schedule details are incomplete. Please choose another time.';
+      });
+      return;
+    }
     final draft = _buildDraft();
-    final reference =
-        'CC-${professional.id.padLeft(3, '0')}-${availability.isoDate.replaceAll('-', '')}';
+    if (_isPreview) {
+      final reference =
+          'CC-${professional.id.padLeft(3, '0')}-${availability.isoDate.replaceAll('-', '')}';
+      _openConfirmation(draft, reference);
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+      _submitError = null;
+    });
+    try {
+      final appointment = await widget.repository!.createAppointment(draft);
+      if (!mounted) return;
+      _openConfirmation(draft, appointment.reference);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitError = error.fieldError('startTime') ?? error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitError =
+            'We could not send your appointment request. Please try again.';
+      });
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _openConfirmation(AppointmentBookingDraft draft, String reference) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) =>
@@ -155,12 +209,37 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         ),
         bottomNavigationBar: SafeArea(
           minimum: const EdgeInsets.fromLTRB(20, 8, 20, 14),
-          child: FilledButton(
-            key: Key(
-              _step == 2 ? 'confirm-booking-button' : 'booking-continue-button',
-            ),
-            onPressed: _continue,
-            child: Text(_step == 2 ? 'Send appointment request' : 'Continue'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_submitError != null) ...[
+                Text(
+                  _submitError!,
+                  key: const Key('booking-submit-error'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.coral, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+              ],
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  key: Key(
+                    _step == 2
+                        ? 'confirm-booking-button'
+                        : 'booking-continue-button',
+                  ),
+                  onPressed: _isSubmitting ? null : _continue,
+                  child: Text(
+                    _isSubmitting
+                        ? 'Sending request…'
+                        : _step == 2
+                        ? 'Send appointment request'
+                        : 'Continue',
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -194,21 +273,23 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         const SizedBox(height: 16),
         const _Heading(title: 'Practice location'),
         const SizedBox(height: 12),
-        ...List.generate(
-          professional.clinics.length,
-          (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _SelectCard(
-              selected: index == _clinicIndex,
-              icon: Icons.location_on_outlined,
-              title: professional.clinics[index].name,
-              subtitle:
-                  professional.clinics[index].city ??
-                  'Location to be confirmed',
-              onTap: () => setState(() => _clinicIndex = index),
+        ...(_isPreview
+                ? List.generate(professional.clinics.length, (index) => index)
+                : [_clinicIndex])
+            .map(
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SelectCard(
+                  selected: index == _clinicIndex,
+                  icon: Icons.location_on_outlined,
+                  title: professional.clinics[index].name,
+                  subtitle:
+                      professional.clinics[index].city ??
+                      'Location to be confirmed',
+                  onTap: () => setState(() => _clinicIndex = index),
+                ),
+              ),
             ),
-          ),
-        ),
         const SizedBox(height: 16),
         const _Heading(title: 'Choose a day'),
         const SizedBox(height: 12),

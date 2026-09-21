@@ -1,7 +1,9 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
+import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
 
 class ProfessionalProfileScreen extends StatefulWidget {
@@ -9,10 +11,14 @@ class ProfessionalProfileScreen extends StatefulWidget {
     super.key,
     required this.professional,
     this.repository,
+    this.bookingRepository,
+    this.currentUser,
   });
 
   final CareProfessional professional;
   final FindCareDataSource? repository;
+  final AppointmentBookingDataSource? bookingRepository;
+  final CurrentUser? currentUser;
 
   @override
   State<ProfessionalProfileScreen> createState() =>
@@ -136,6 +142,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       MaterialPageRoute<void>(
         builder: (_) => BookingFlowScreen(
           professional: professional,
+          repository: widget.bookingRepository,
+          currentUser: widget.currentUser,
           initialClinicIndex: _selectedClinic,
           initialDayIndex: _selectedDay,
           initialTime: _selectedTime,
