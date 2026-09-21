@@ -12,6 +12,10 @@ flutter run \
   --dart-define=CARECONNECT_API_BASE_URL=http://10.0.2.2:3000
 ```
 
+Without an override, the app uses the CareConnect Render API at
+`https://careconnect-api-sb5u.onrender.com`. Use the command above only when a
+CareConnect backend is running locally on port 3000.
+
 Authentication uses the CareConnect API email/password endpoints. The signed
 access token is stored using the platform's encrypted secure storage. Never add
 a server JWT secret, password, or access token to this repository or to a

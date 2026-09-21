@@ -5,7 +5,7 @@ class AppConfig {
   /// --dart-define=CARECONNECT_API_BASE_URL=http://host:port
   static const apiBaseUrl = String.fromEnvironment(
     'CARECONNECT_API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: 'https://careconnect-api-sb5u.onrender.com',
   );
 
   static Uri apiUri(String path, [Map<String, dynamic>? queryParameters]) {
