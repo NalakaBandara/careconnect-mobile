@@ -1,6 +1,8 @@
 import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
+import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
@@ -38,6 +40,7 @@ class _MainShellState extends State<MainShell> {
   late final Set<int> _loadedIndexes = {widget.initialIndex};
   ApiClient? _apiClient;
   AppointmentsDataSource? _appointmentsRepository;
+  AppointmentsController? _appointmentsController;
   FindCareDataSource? _findCareRepository;
   AppointmentBookingDataSource? _bookingRepository;
   NotificationsRepository? _notificationsRepository;
@@ -56,6 +59,9 @@ class _MainShellState extends State<MainShell> {
         onUnauthorized: _handleUnauthorized,
       );
       _appointmentsRepository = AppointmentsRepository(_apiClient!);
+      _appointmentsController = AppointmentsController(
+        _appointmentsRepository!,
+      );
       _findCareRepository = FindCareRepository(_apiClient!);
       _bookingRepository = AppointmentBookingRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
@@ -65,6 +71,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    _appointmentsController?.dispose();
     _apiClient?.close();
     super.dispose();
   }
@@ -78,6 +85,12 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _updateUser(CurrentUser user) => setState(() => _user = user);
+
+  void _appointmentCreated(CareAppointment appointment) {
+    _appointmentsController?.upsert(appointment);
+  }
+
+  void _viewAppointments() => _select(2);
 
   Future<void> _handleUnauthorized() async {
     if (_handlingUnauthorized) return;
@@ -97,7 +110,7 @@ class _MainShellState extends State<MainShell> {
       if (_loadedIndexes.contains(0))
         HomeScreen(
           firstName: _user?.firstName,
-          repository: _appointmentsRepository,
+          appointmentsController: _appointmentsController,
           onFindCare: () => _select(1),
           onAppointments: () => _select(2),
           onProfile: () => _select(3),
@@ -110,6 +123,8 @@ class _MainShellState extends State<MainShell> {
           repository: _findCareRepository,
           bookingRepository: _bookingRepository,
           currentUser: _user,
+          onAppointmentCreated: _appointmentCreated,
+          onViewAppointments: _viewAppointments,
           onNotifications: _openNotifications,
         )
       else
@@ -118,6 +133,7 @@ class _MainShellState extends State<MainShell> {
         AppointmentsScreen(
           key: const ValueKey('appointments-page'),
           repository: _appointmentsRepository,
+          appointmentsController: _appointmentsController,
         )
       else
         const SizedBox.shrink(),

@@ -1,5 +1,6 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/home/data/home_preview_data.dart';
@@ -11,6 +12,7 @@ class HomeScreen extends StatefulWidget {
     super.key,
     this.firstName,
     this.repository,
+    this.appointmentsController,
     required this.onFindCare,
     required this.onAppointments,
     required this.onProfile,
@@ -19,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
   final String? firstName;
   final AppointmentsDataSource? repository;
+  final AppointmentsController? appointmentsController;
   final VoidCallback onFindCare;
   final VoidCallback onAppointments;
   final VoidCallback onProfile;
@@ -32,8 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
   late List<CareAppointment> _appointments;
   bool _isLoading = false;
   String? _error;
+  AppointmentsController? _controller;
+  bool _ownsController = false;
 
-  bool get _isPreview => widget.repository == null;
+  bool get _isPreview =>
+      widget.repository == null && widget.appointmentsController == null;
 
   @override
   void initState() {
@@ -41,27 +47,36 @@ class _HomeScreenState extends State<HomeScreen> {
     _appointments = _isPreview
         ? List.of(AppointmentsPreviewData.appointments)
         : [];
-    if (!_isPreview) _loadDashboard();
+    if (!_isPreview) {
+      _controller = widget.appointmentsController;
+      if (_controller == null) {
+        _controller = AppointmentsController(widget.repository!);
+        _ownsController = true;
+      }
+      _controller!.addListener(_syncAppointments);
+      _syncAppointments();
+      _controller!.load();
+    }
   }
 
-  Future<void> _loadDashboard() async {
+  void _syncAppointments() {
+    if (!mounted) return;
     setState(() {
-      _isLoading = true;
-      _error = null;
+      _appointments = _controller!.appointments;
+      _isLoading = _controller!.isLoading;
+      _error = _controller!.error == null
+          ? null
+          : 'We could not load your dashboard. Check your connection and try again.';
     });
-    try {
-      final appointments = await widget.repository!.getMyAppointments();
-      if (!mounted) return;
-      setState(() => _appointments = appointments);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error =
-            'We could not load your dashboard. Check your connection and try again.';
-      });
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  }
+
+  Future<void> _loadDashboard() => _controller!.refresh();
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_syncAppointments);
+    if (_ownsController) _controller?.dispose();
+    super.dispose();
   }
 
   List<CareAppointment> get _upcomingAppointments =>

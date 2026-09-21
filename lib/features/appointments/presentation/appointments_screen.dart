@@ -1,5 +1,6 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_detail_screen.dart';
@@ -7,9 +8,14 @@ import 'package:careconnect_mobile/features/appointments/presentation/appointmen
 import 'package:flutter/material.dart';
 
 class AppointmentsScreen extends StatefulWidget {
-  const AppointmentsScreen({super.key, this.repository});
+  const AppointmentsScreen({
+    super.key,
+    this.repository,
+    this.appointmentsController,
+  });
 
   final AppointmentsDataSource? repository;
+  final AppointmentsController? appointmentsController;
 
   @override
   State<AppointmentsScreen> createState() => _AppointmentsScreenState();
@@ -20,8 +26,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   bool _showPast = false;
   bool _isLoading = false;
   String? _error;
+  AppointmentsController? _controller;
+  bool _ownsController = false;
 
-  bool get _isPreview => widget.repository == null;
+  bool get _isPreview =>
+      widget.repository == null && widget.appointmentsController == null;
 
   @override
   void initState() {
@@ -29,27 +38,36 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     _appointments = _isPreview
         ? List.of(AppointmentsPreviewData.appointments)
         : [];
-    if (!_isPreview) _loadAppointments();
+    if (!_isPreview) {
+      _controller = widget.appointmentsController;
+      if (_controller == null) {
+        _controller = AppointmentsController(widget.repository!);
+        _ownsController = true;
+      }
+      _controller!.addListener(_syncAppointments);
+      _syncAppointments();
+      _controller!.load();
+    }
   }
 
-  Future<void> _loadAppointments() async {
+  void _syncAppointments() {
+    if (!mounted) return;
     setState(() {
-      _isLoading = true;
-      _error = null;
+      _appointments = _controller!.appointments;
+      _isLoading = _controller!.isLoading;
+      _error = _controller!.error == null
+          ? null
+          : 'We could not load your appointments. Check your connection and try again.';
     });
-    try {
-      final appointments = await widget.repository!.getMyAppointments();
-      if (!mounted) return;
-      setState(() => _appointments = appointments);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _error =
-            'We could not load your appointments. Check your connection and try again.';
-      });
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  }
+
+  Future<void> _loadAppointments() => _controller!.refresh();
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_syncAppointments);
+    if (_ownsController) _controller?.dispose();
+    super.dispose();
   }
 
   List<CareAppointment> get _visibleAppointments =>
@@ -63,6 +81,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         );
 
   void _updateAppointment(CareAppointment updated) {
+    if (_controller != null) {
+      _controller!.upsert(updated);
+      return;
+    }
     final index = _appointments.indexWhere((item) => item.id == updated.id);
     if (index == -1) return;
     setState(() => _appointments[index] = updated);

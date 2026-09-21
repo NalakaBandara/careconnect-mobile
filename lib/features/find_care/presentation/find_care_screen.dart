@@ -1,5 +1,6 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
+import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
@@ -13,12 +14,16 @@ class FindCareScreen extends StatefulWidget {
     this.repository,
     this.bookingRepository,
     this.currentUser,
+    this.onAppointmentCreated,
+    this.onViewAppointments,
     this.onNotifications,
   });
 
   final FindCareDataSource? repository;
   final AppointmentBookingDataSource? bookingRepository;
   final CurrentUser? currentUser;
+  final ValueChanged<CareAppointment>? onAppointmentCreated;
+  final VoidCallback? onViewAppointments;
   final VoidCallback? onNotifications;
 
   @override
@@ -348,6 +353,8 @@ class _FindCareScreenState extends State<FindCareScreen> {
                               repository: widget.repository,
                               bookingRepository: widget.bookingRepository,
                               currentUser: widget.currentUser,
+                              onAppointmentCreated: widget.onAppointmentCreated,
+                              onViewAppointments: widget.onViewAppointments,
                             ),
                           ),
                         ),

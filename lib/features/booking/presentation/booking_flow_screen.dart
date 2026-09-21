@@ -1,6 +1,7 @@
 import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
+import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_confirmation_screen.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
@@ -13,6 +14,8 @@ class BookingFlowScreen extends StatefulWidget {
     required this.professional,
     this.repository,
     this.currentUser,
+    this.onAppointmentCreated,
+    this.onViewAppointments,
     this.initialClinicIndex = 0,
     this.initialDayIndex = 0,
     this.initialTime,
@@ -21,6 +24,8 @@ class BookingFlowScreen extends StatefulWidget {
   final CareProfessional professional;
   final AppointmentBookingDataSource? repository;
   final CurrentUser? currentUser;
+  final ValueChanged<CareAppointment>? onAppointmentCreated;
+  final VoidCallback? onViewAppointments;
   final int initialClinicIndex;
   final int initialDayIndex;
   final String? initialTime;
@@ -153,6 +158,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     try {
       final appointment = await widget.repository!.createAppointment(draft);
       if (!mounted) return;
+      widget.onAppointmentCreated?.call(appointment);
       _openConfirmation(draft, appointment.reference);
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -173,8 +179,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   void _openConfirmation(AppointmentBookingDraft draft, String reference) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            BookingConfirmationScreen(booking: draft, reference: reference),
+        builder: (_) => BookingConfirmationScreen(
+          booking: draft,
+          reference: reference,
+          onViewAppointments: widget.onViewAppointments,
+        ),
       ),
     );
   }

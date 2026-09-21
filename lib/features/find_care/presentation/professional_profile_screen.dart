@@ -1,5 +1,6 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
+import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
@@ -13,12 +14,16 @@ class ProfessionalProfileScreen extends StatefulWidget {
     this.repository,
     this.bookingRepository,
     this.currentUser,
+    this.onAppointmentCreated,
+    this.onViewAppointments,
   });
 
   final CareProfessional professional;
   final FindCareDataSource? repository;
   final AppointmentBookingDataSource? bookingRepository;
   final CurrentUser? currentUser;
+  final ValueChanged<CareAppointment>? onAppointmentCreated;
+  final VoidCallback? onViewAppointments;
 
   @override
   State<ProfessionalProfileScreen> createState() =>
@@ -144,6 +149,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
           professional: professional,
           repository: widget.bookingRepository,
           currentUser: widget.currentUser,
+          onAppointmentCreated: widget.onAppointmentCreated,
+          onViewAppointments: widget.onViewAppointments,
           initialClinicIndex: _selectedClinic,
           initialDayIndex: _selectedDay,
           initialTime: _selectedTime,

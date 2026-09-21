@@ -4,6 +4,7 @@ import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
@@ -176,6 +177,9 @@ void main() {
       find.byKey(const Key('register-confirm-password')),
       'password123',
     );
+    await tester.ensureVisible(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox));
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
@@ -219,6 +223,9 @@ void main() {
       find.byKey(const Key('register-confirm-password')),
       'password123',
     );
+    await tester.ensureVisible(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox));
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
@@ -619,6 +626,8 @@ void main() {
   ) async {
     usePhoneSize(tester);
     final bookingRepository = _FakeBookingDataSource();
+    CareAppointment? createdAppointment;
+    var openedAppointments = false;
     final professional = FindCarePreviewData.professionals.first.copyWith(
       availability: const [
         CareAvailabilityPreview(
@@ -638,6 +647,9 @@ void main() {
         home: BookingFlowScreen(
           professional: professional,
           repository: bookingRepository,
+          onAppointmentCreated: (appointment) =>
+              createdAppointment = appointment,
+          onViewAppointments: () => openedAppointments = true,
           currentUser: const CurrentUser(
             id: '8',
             email: 'amara@example.com',
@@ -664,7 +676,17 @@ void main() {
     expect(bookingRepository.createCalls, 1);
     expect(bookingRepository.lastBooking?.doctorScheduleId, '15');
     expect(bookingRepository.lastBooking?.endTime, '09:50');
+    expect(createdAppointment?.reference, 'CC-7351-REAL');
     expect(find.text('CC-7351-REAL'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('booking-done-button')),
+      220,
+    );
+    expect(find.text('View appointments'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('booking-done-button')));
+    await tester.pumpAndSettle();
+    expect(openedAppointments, isTrue);
   });
 
   test('booking repository posts the backend appointment contract', () async {
@@ -718,6 +740,43 @@ void main() {
       'reason': 'General check-up',
     });
   });
+
+  test(
+    'shared appointments controller deduplicates loads and syncs updates',
+    () async {
+      final repository = _FakeAppointmentsDataSource();
+      final controller = AppointmentsController(repository);
+      addTearDown(controller.dispose);
+
+      await controller.load();
+      await controller.load();
+      expect(repository.listCalls, 1);
+      expect(controller.appointments, hasLength(1));
+
+      controller.upsert(
+        repository.appointment.copyWith(
+          status: AppointmentStatus.cancelled,
+          reason: 'Changed in appointment detail',
+        ),
+      );
+      expect(
+        controller.appointments.single.status,
+        AppointmentStatus.cancelled,
+      );
+
+      final created = AppointmentsPreviewData.appointments[1].copyWith(
+        bookingReference: 'CC-NEW-SYNC',
+      );
+      controller.upsert(created);
+      expect(controller.appointments, hasLength(2));
+      expect(
+        controller.appointments.any(
+          (appointment) => appointment.reference == 'CC-NEW-SYNC',
+        ),
+        isTrue,
+      );
+    },
+  );
 
   testWidgets('opens an appointment and moves a cancellation to past', (
     tester,

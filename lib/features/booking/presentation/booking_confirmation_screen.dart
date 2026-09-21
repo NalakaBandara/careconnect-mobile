@@ -7,10 +7,12 @@ class BookingConfirmationScreen extends StatelessWidget {
     super.key,
     required this.booking,
     required this.reference,
+    this.onViewAppointments,
   });
 
   final AppointmentBookingDraft booking;
   final String reference;
+  final VoidCallback? onViewAppointments;
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +84,13 @@ class BookingConfirmationScreen extends StatelessWidget {
           const SizedBox(height: 28),
           FilledButton(
             key: const Key('booking-done-button'),
-            onPressed: () =>
-                Navigator.of(context).popUntil((route) => route.isFirst),
-            child: const Text('Done'),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              onViewAppointments?.call();
+            },
+            child: Text(
+              onViewAppointments == null ? 'Done' : 'View appointments',
+            ),
           ),
         ],
       ),
