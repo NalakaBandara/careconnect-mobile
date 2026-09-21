@@ -1,12 +1,16 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
+import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
+import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/home/data/home_preview_data.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.firstName,
+    this.repository,
     required this.onFindCare,
     required this.onAppointments,
     required this.onProfile,
@@ -14,112 +18,182 @@ class HomeScreen extends StatelessWidget {
   });
 
   final String? firstName;
+  final AppointmentsDataSource? repository;
   final VoidCallback onFindCare;
   final VoidCallback onAppointments;
   final VoidCallback onProfile;
   final VoidCallback onNotifications;
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late List<CareAppointment> _appointments;
+  bool _isLoading = false;
+  String? _error;
+
+  bool get _isPreview => widget.repository == null;
+
+  @override
+  void initState() {
+    super.initState();
+    _appointments = _isPreview
+        ? List.of(AppointmentsPreviewData.appointments)
+        : [];
+    if (!_isPreview) _loadDashboard();
+  }
+
+  Future<void> _loadDashboard() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final appointments = await widget.repository!.getMyAppointments();
+      if (!mounted) return;
+      setState(() => _appointments = appointments);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error =
+            'We could not load your dashboard. Check your connection and try again.';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  List<CareAppointment> get _upcomingAppointments =>
+      _appointments
+          .where((appointment) => !appointment.isPast)
+          .toList(growable: false)
+        ..sort((a, b) {
+          final dateComparison = a.appointmentDate.compareTo(b.appointmentDate);
+          return dateComparison != 0
+              ? dateComparison
+              : a.startTime.compareTo(b.startTime);
+        });
+
+  @override
   Widget build(BuildContext context) {
-    final displayName = firstName?.trim().isNotEmpty == true
-        ? firstName!
+    final displayName = widget.firstName?.trim().isNotEmpty == true
+        ? widget.firstName!
         : 'there';
+    final upcoming = _upcomingAppointments;
+    final nextAppointment = upcoming.isEmpty ? null : upcoming.first;
 
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          key: const Key('home-scroll-view'),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 112),
-              sliver: SliverList.list(
-                children: [
-                  _HomeHeader(
-                    onProfile: onProfile,
-                    onNotifications: onNotifications,
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    'Good morning, $displayName',
-                    key: const Key('home-greeting'),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.displaySmall?.copyWith(fontSize: 31),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    'How can we help you feel your best today?',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyLarge?.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 24),
-                  _FindCareHero(onTap: onFindCare),
-                  const SizedBox(height: 30),
-                  const _SectionTitle(title: 'Quick actions'),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.search_rounded,
-                          label: 'Find a doctor',
-                          caption: 'Browse care',
-                          color: AppColors.primary,
-                          background: AppColors.mintSoft,
-                          onTap: onFindCare,
+        child: RefreshIndicator(
+          onRefresh: _isPreview
+              ? () async =>
+                    Future<void>.delayed(const Duration(milliseconds: 250))
+              : _loadDashboard,
+          child: CustomScrollView(
+            key: const Key('home-scroll-view'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 112),
+                sliver: SliverList.list(
+                  children: [
+                    _HomeHeader(
+                      firstName: widget.firstName,
+                      onProfile: widget.onProfile,
+                      onNotifications: widget.onNotifications,
+                    ),
+                    const SizedBox(height: 30),
+                    Text(
+                      'Good morning, $displayName',
+                      key: const Key('home-greeting'),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.displaySmall?.copyWith(fontSize: 31),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      'How can we help you feel your best today?',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(fontSize: 14),
+                    ),
+                    const SizedBox(height: 24),
+                    _FindCareHero(onTap: widget.onFindCare),
+                    const SizedBox(height: 30),
+                    const _SectionTitle(title: 'Quick actions'),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.search_rounded,
+                            label: 'Find a doctor',
+                            caption: 'Browse care',
+                            color: AppColors.primary,
+                            background: AppColors.mintSoft,
+                            onTap: widget.onFindCare,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.calendar_month_rounded,
-                          label: 'Appointments',
-                          caption: 'Manage visits',
-                          color: const Color(0xFF5276D8),
-                          background: AppColors.blueSoft,
-                          onTap: onAppointments,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.calendar_month_rounded,
+                            label: 'Appointments',
+                            caption:
+                                '${upcoming.length} upcoming ${upcoming.length == 1 ? 'visit' : 'visits'}',
+                            color: const Color(0xFF5276D8),
+                            background: AppColors.blueSoft,
+                            onTap: widget.onAppointments,
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    _SectionTitle(
+                      title: 'Next appointment',
+                      actionLabel: 'View all',
+                      onAction: widget.onAppointments,
+                    ),
+                    const SizedBox(height: 14),
+                    if (_isLoading && nextAppointment == null)
+                      const _DashboardLoading()
+                    else if (_error != null && nextAppointment == null)
+                      _DashboardError(message: _error!, onRetry: _loadDashboard)
+                    else if (nextAppointment == null)
+                      _NoUpcomingAppointments(onFindCare: widget.onFindCare)
+                    else
+                      _AppointmentCard(
+                        appointment: nextAppointment,
+                        onTap: widget.onAppointments,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  _SectionTitle(
-                    title: 'Next appointment',
-                    actionLabel: 'View all',
-                    onAction: onAppointments,
-                  ),
-                  const SizedBox(height: 14),
-                  _AppointmentCard(
-                    appointment: HomePreviewData.appointment,
-                    onTap: onAppointments,
-                  ),
-                  const SizedBox(height: 30),
-                  _SectionTitle(
-                    title: 'Explore care',
-                    actionLabel: 'See all',
-                    onAction: onFindCare,
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 142,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: HomePreviewData.categories.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 12),
-                      itemBuilder: (_, index) => _CategoryCard(
-                        category: HomePreviewData.categories[index],
-                        onTap: onFindCare,
+                    const SizedBox(height: 30),
+                    _SectionTitle(
+                      title: 'Explore care',
+                      actionLabel: 'See all',
+                      onAction: widget.onFindCare,
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 150,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: HomePreviewData.categories.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
+                        itemBuilder: (_, index) => _CategoryCard(
+                          category: HomePreviewData.categories[index],
+                          onTap: widget.onFindCare,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
-                  const _WellnessCard(),
-                ],
+                    const SizedBox(height: 28),
+                    const _WellnessCard(),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -127,8 +201,13 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onProfile, required this.onNotifications});
+  const _HomeHeader({
+    required this.firstName,
+    required this.onProfile,
+    required this.onNotifications,
+  });
 
+  final String? firstName;
   final VoidCallback onProfile;
   final VoidCallback onNotifications;
 
@@ -166,9 +245,9 @@ class _HomeHeader extends StatelessWidget {
               color: AppColors.lilacSoft,
               shape: BoxShape.circle,
             ),
-            child: const Text(
-              'CC',
-              style: TextStyle(
+            child: Text(
+              _initials(firstName),
+              style: const TextStyle(
                 color: Color(0xFF7957C8),
                 fontWeight: FontWeight.w800,
               ),
@@ -177,6 +256,11 @@ class _HomeHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _initials(String? value) {
+    final name = value?.trim();
+    return name == null || name.isEmpty ? 'CC' : name[0].toUpperCase();
   }
 }
 
@@ -369,7 +453,7 @@ class _SectionTitle extends StatelessWidget {
 class _AppointmentCard extends StatelessWidget {
   const _AppointmentCard({required this.appointment, required this.onTap});
 
-  final AppointmentPreview appointment;
+  final CareAppointment appointment;
   final VoidCallback onTap;
 
   @override
@@ -396,7 +480,7 @@ class _AppointmentCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      appointment.date,
+                      '${appointment.date?.day ?? '--'}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -404,7 +488,7 @@ class _AppointmentCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      appointment.day,
+                      _weekday(appointment.date),
                       style: const TextStyle(
                         color: Color(0xFFC6E9E3),
                         fontSize: 10,
@@ -420,7 +504,7 @@ class _AppointmentCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appointment.doctorName,
+                      appointment.doctor.displayName,
                       style: const TextStyle(
                         color: AppColors.ink,
                         fontSize: 16,
@@ -429,7 +513,7 @@ class _AppointmentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      appointment.specialty,
+                      appointment.service.name,
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 12,
@@ -446,7 +530,7 @@ class _AppointmentCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          appointment.time,
+                          appointment.startTime,
                           style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
@@ -464,6 +548,88 @@ class _AppointmentCard extends StatelessWidget {
       ),
     );
   }
+
+  String _weekday(DateTime? date) {
+    const labels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    return date == null ? '' : labels[date.weekday - 1];
+  }
+}
+
+class _DashboardLoading extends StatelessWidget {
+  const _DashboardLoading();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    key: Key('home-dashboard-loading'),
+    height: 116,
+    child: Center(child: CircularProgressIndicator()),
+  );
+}
+
+class _DashboardError extends StatelessWidget {
+  const _DashboardError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('home-dashboard-error'),
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF2E6),
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          message,
+          style: const TextStyle(color: AppColors.muted, height: 1.4),
+        ),
+        const SizedBox(height: 10),
+        TextButton.icon(
+          key: const Key('home-dashboard-retry'),
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Try again'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _NoUpcomingAppointments extends StatelessWidget {
+  const _NoUpcomingAppointments({required this.onFindCare});
+
+  final VoidCallback onFindCare;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('home-dashboard-empty'),
+    padding: const EdgeInsets.all(19),
+    decoration: BoxDecoration(
+      color: AppColors.mintSoft,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.event_available_rounded, color: AppColors.primary),
+        const SizedBox(width: 13),
+        const Expanded(
+          child: Text(
+            'No upcoming visits. Find care whenever you are ready.',
+            style: TextStyle(color: AppColors.ink, height: 1.4),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Find care',
+          onPressed: onFindCare,
+          icon: const Icon(Icons.arrow_forward_rounded),
+        ),
+      ],
+    ),
+  );
 }
 
 class _CategoryCard extends StatelessWidget {

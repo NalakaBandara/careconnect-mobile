@@ -18,6 +18,7 @@ import 'package:careconnect_mobile/features/find_care/data/find_care_preview_dat
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
+import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
 import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
 import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
@@ -289,6 +290,72 @@ void main() {
     await tester.tap(find.byKey(const Key('nav-appointments')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('appointments-title')), findsOneWidget);
+  });
+
+  testWidgets('loads real appointment data on the home dashboard', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAppointmentsDataSource();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: HomeScreen(
+          firstName: 'Amara',
+          repository: repository,
+          onFindCare: () {},
+          onAppointments: () {},
+          onProfile: () {},
+          onNotifications: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.listCalls, 1);
+    expect(find.text('Good morning, Amara'), findsOneWidget);
+    expect(find.text('1 upcoming visit'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const Key('home-scroll-view')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(repository.appointment.doctor.displayName),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows the real home dashboard empty state', (tester) async {
+    usePhoneSize(tester);
+    final repository = _FakeAppointmentsDataSource()..appointments = [];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: HomeScreen(
+          repository: repository,
+          onFindCare: () {},
+          onAppointments: () {},
+          onProfile: () {},
+          onNotifications: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('0 upcoming visits'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const Key('home-scroll-view')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-dashboard-empty')), findsOneWidget);
   });
 
   testWidgets('opens notifications from home and reads an update', (
@@ -829,6 +896,7 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
   int detailCalls = 0;
   int slotCalls = 0;
   int rescheduleCalls = 0;
+  List<CareAppointment>? appointments;
   String? cancelReason;
   String? rescheduledStartTime;
 
@@ -839,7 +907,7 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
     String? toDate,
   }) async {
     listCalls++;
-    return [appointment];
+    return appointments ?? [appointment];
   }
 
   @override

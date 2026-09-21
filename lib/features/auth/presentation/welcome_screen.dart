@@ -8,9 +8,10 @@ import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({this.authService, super.key});
+  const WelcomeScreen({this.authService, this.initialMessage, super.key});
 
   final AuthDataSource? authService;
+  final String? initialMessage;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -24,6 +25,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void initState() {
     super.initState();
     _authService = widget.authService ?? AuthService();
+    final message = widget.initialMessage;
+    if (message != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      });
+    }
     _restoreSession();
   }
 
@@ -59,17 +69,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       MainShell(
         user: user,
         accessTokenProvider: _authService.accessToken,
-        onLogout: () async {
-          await _authService.logout();
-          if (!homeContext.mounted) return;
-          Navigator.of(homeContext).pushAndRemoveUntil(
-            MaterialPageRoute<void>(
-              builder: (_) => WelcomeScreen(authService: _authService),
-            ),
-            (_) => false,
-          );
-        },
+        onLogout: () => _returnToWelcome(homeContext),
+        onSessionExpired: () => _returnToWelcome(
+          homeContext,
+          message: 'Your session expired. Please sign in again.',
+        ),
       );
+
+  Future<void> _returnToWelcome(
+    BuildContext homeContext, {
+    String? message,
+  }) async {
+    await _authService.logout();
+    if (!homeContext.mounted) return;
+    Navigator.of(homeContext).pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            WelcomeScreen(authService: _authService, initialMessage: message),
+      ),
+      (_) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

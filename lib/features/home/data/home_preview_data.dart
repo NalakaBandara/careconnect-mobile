@@ -16,34 +16,7 @@ class CareCategory {
   final Color background;
 }
 
-class AppointmentPreview {
-  const AppointmentPreview({
-    required this.doctorName,
-    required this.specialty,
-    required this.clinic,
-    required this.day,
-    required this.date,
-    required this.time,
-  });
-
-  final String doctorName;
-  final String specialty;
-  final String clinic;
-  final String day;
-  final String date;
-  final String time;
-}
-
 abstract final class HomePreviewData {
-  static const appointment = AppointmentPreview(
-    doctorName: 'Dr. Arun Mehta',
-    specialty: 'General Practice',
-    clinic: 'Northgate Family Practice',
-    day: 'THU',
-    date: '03',
-    time: '09:30',
-  );
-
   static const categories = [
     CareCategory(
       name: 'General',

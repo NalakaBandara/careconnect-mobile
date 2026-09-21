@@ -17,12 +17,14 @@ class MainShell extends StatefulWidget {
     super.key,
     this.user,
     this.onLogout,
+    this.onSessionExpired,
     this.accessTokenProvider,
     this.initialIndex = 0,
   });
 
   final CurrentUser? user;
   final Future<void> Function()? onLogout;
+  final Future<void> Function()? onSessionExpired;
   final AccessTokenProvider? accessTokenProvider;
   final int initialIndex;
 
@@ -38,6 +40,7 @@ class _MainShellState extends State<MainShell> {
   NotificationsRepository? _notificationsRepository;
   UserDataSource? _userRepository;
   late CurrentUser? _user;
+  bool _handlingUnauthorized = false;
 
   @override
   void initState() {
@@ -45,7 +48,10 @@ class _MainShellState extends State<MainShell> {
     _user = widget.user;
     final tokenProvider = widget.accessTokenProvider;
     if (tokenProvider != null) {
-      _apiClient = ApiClient(accessTokenProvider: tokenProvider);
+      _apiClient = ApiClient(
+        accessTokenProvider: tokenProvider,
+        onUnauthorized: _handleUnauthorized,
+      );
       _appointmentsRepository = AppointmentsRepository(_apiClient!);
       _findCareRepository = FindCareRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
@@ -63,6 +69,12 @@ class _MainShellState extends State<MainShell> {
 
   void _updateUser(CurrentUser user) => setState(() => _user = user);
 
+  Future<void> _handleUnauthorized() async {
+    if (_handlingUnauthorized) return;
+    _handlingUnauthorized = true;
+    await widget.onSessionExpired?.call();
+  }
+
   void _openNotifications() => Navigator.of(context).push<void>(
     MaterialPageRoute(
       builder: (_) => NotificationsScreen(repository: _notificationsRepository),
@@ -74,6 +86,7 @@ class _MainShellState extends State<MainShell> {
     final pages = [
       HomeScreen(
         firstName: _user?.firstName,
+        repository: _appointmentsRepository,
         onFindCare: () => _select(1),
         onAppointments: () => _select(2),
         onProfile: () => _select(3),

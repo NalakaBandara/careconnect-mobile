@@ -6,16 +6,21 @@ import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
+typedef UnauthorizedHandler = Future<void> Function();
 
 class ApiClient {
   ApiClient({
     required AccessTokenProvider accessTokenProvider,
+    UnauthorizedHandler? onUnauthorized,
     HttpClient? httpClient,
   }) : _accessTokenProvider = accessTokenProvider,
+       _onUnauthorized = onUnauthorized,
        _httpClient = httpClient ?? HttpClient();
 
   final AccessTokenProvider _accessTokenProvider;
+  final UnauthorizedHandler? _onUnauthorized;
   final HttpClient _httpClient;
+  bool _didNotifyUnauthorized = false;
 
   Future<Object?> get(String path, {Map<String, dynamic>? queryParameters}) =>
       _send('GET', path, queryParameters: queryParameters);
@@ -70,6 +75,15 @@ class ApiClient {
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (response.statusCode == HttpStatus.unauthorized &&
+            !_didNotifyUnauthorized) {
+          _didNotifyUnauthorized = true;
+          try {
+            await _onUnauthorized?.call();
+          } catch (_) {
+            // Session cleanup must not hide the original API failure.
+          }
+        }
         throw ApiException(
           message: _errorMessage(decodedBody),
           statusCode: response.statusCode,
