@@ -9,7 +9,7 @@ enum _InboxFilter { all, unread }
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key, this.repository});
 
-  final NotificationsRepository? repository;
+  final NotificationsDataSource? repository;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -19,7 +19,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   late List<CareNotification> _notifications;
   _InboxFilter _filter = _InboxFilter.all;
   bool _isLoading = false;
+  bool _isMarkingAll = false;
   String? _error;
+  final Set<String> _updatingIds = {};
 
   bool get _isPreview => widget.repository == null;
   int get _unreadCount => _notifications.where((item) => !item.isRead).length;
@@ -57,45 +59,59 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _markRead(CareNotification notification) async {
-    if (notification.isRead) return;
+  Future<bool> _markRead(
+    CareNotification notification, {
+    bool showFailure = true,
+  }) async {
+    if (notification.isRead) return true;
+    if (_updatingIds.contains(notification.id)) return true;
     final index = _notifications.indexWhere(
       (item) => item.id == notification.id,
     );
-    if (index == -1) return;
+    if (index == -1) return false;
 
     final previous = _notifications[index];
     setState(() {
+      _updatingIds.add(notification.id);
       _notifications[index] = previous.copyWith(
         isRead: true,
         readAt: DateTime.now(),
       );
     });
 
-    if (_isPreview) return;
+    if (_isPreview) {
+      setState(() => _updatingIds.remove(notification.id));
+      return true;
+    }
     try {
       final updated = await widget.repository!.setRead(
         notification.id,
         isRead: true,
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       final currentIndex = _notifications.indexWhere(
         (item) => item.id == notification.id,
       );
       if (currentIndex != -1) {
         setState(() => _notifications[currentIndex] = updated);
       }
+      return true;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) return false;
       final currentIndex = _notifications.indexWhere(
         (item) => item.id == notification.id,
       );
       if (currentIndex != -1) {
         setState(() => _notifications[currentIndex] = previous);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update this notification.')),
-      );
+      if (showFailure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update this notification.')),
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _updatingIds.remove(notification.id));
     }
   }
 
@@ -114,9 +130,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markAllRead() async {
+    if (_isMarkingAll) return;
     final unread = _notifications.where((item) => !item.isRead).toList();
+    setState(() => _isMarkingAll = true);
+    var failures = 0;
     for (final notification in unread) {
-      await _markRead(notification);
+      final succeeded = await _markRead(notification, showFailure: false);
+      if (!succeeded) failures++;
+    }
+    if (!mounted) return;
+    setState(() => _isMarkingAll = false);
+    if (failures > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            failures == 1
+                ? 'One notification could not be updated.'
+                : '$failures notifications could not be updated.',
+          ),
+        ),
+      );
     }
   }
 
@@ -125,11 +158,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     appBar: AppBar(
       title: const Text('Notifications'),
       actions: [
-        if (_unreadCount > 0)
+        if (_unreadCount > 0 || _isMarkingAll)
           TextButton(
             key: const Key('mark-all-notifications-read'),
-            onPressed: _markAllRead,
-            child: const Text('Mark all read'),
+            onPressed: _isMarkingAll ? null : _markAllRead,
+            child: Text(_isMarkingAll ? 'Marking…' : 'Mark all read'),
           ),
         const SizedBox(width: 8),
       ],
@@ -189,7 +222,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildContent() {
     if (_isLoading && _notifications.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(key: Key('notifications-loading')),
+      );
     }
     if (_error != null && _notifications.isEmpty) {
       return _InboxMessage(

@@ -20,6 +20,7 @@ import 'package:careconnect_mobile/features/find_care/domain/care_professional.d
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
+import 'package:careconnect_mobile/features/notifications/data/notifications_repository.dart';
 import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
 import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
@@ -405,6 +406,50 @@ void main() {
 
     expect(find.text('Everything is read'), findsOneWidget);
     expect(find.text('You are all caught up.'), findsOneWidget);
+  });
+
+  testWidgets('loads and reads real backend notifications', (tester) async {
+    usePhoneSize(tester);
+    final repository = _FakeNotificationsDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: NotificationsScreen(repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.getCalls, 1);
+    expect(find.text('2 updates waiting for you.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('notification-91')));
+    await tester.pumpAndSettle();
+    expect(repository.setReadCalls, 1);
+    expect(find.byKey(const Key('notification-detail-screen')), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('1 update waiting for you.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mark-all-notifications-read')));
+    await tester.pumpAndSettle();
+    expect(repository.setReadCalls, 2);
+    expect(find.text('You are all caught up.'), findsOneWidget);
+  });
+
+  test('notification repository follows the backend API contract', () async {
+    final client = _FakeNotificationsApiClient();
+    final repository = NotificationsRepository(client);
+
+    final notifications = await repository.getNotifications(isRead: false);
+    expect(client.lastGetPath, '/api/v1/notifications');
+    expect(client.lastQuery, {'isRead': false});
+    expect(notifications.single.id, '91');
+
+    final updated = await repository.setRead('91', isRead: true);
+    expect(client.lastPatchPath, '/api/v1/notifications/91/read');
+    expect(client.lastPatchBody, {'isRead': true});
+    expect(updated.isRead, isTrue);
   });
 
   test('parses the backend notification response contract', () {
@@ -973,6 +1018,98 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
       endTime: endTime,
     );
     return appointment;
+  }
+}
+
+class _FakeNotificationsDataSource implements NotificationsDataSource {
+  int getCalls = 0;
+  int setReadCalls = 0;
+  List<CareNotification> notifications = [
+    CareNotification(
+      id: '91',
+      type: CareNotificationType.reminder,
+      title: 'Appointment tomorrow',
+      message: 'Your appointment begins at 09:30.',
+      isRead: false,
+      createdAt: DateTime(2026, 9, 20, 8, 30),
+    ),
+    CareNotification(
+      id: '92',
+      type: CareNotificationType.appointment,
+      title: 'Appointment confirmed',
+      message: 'Your appointment is confirmed.',
+      isRead: false,
+      createdAt: DateTime(2026, 9, 19, 9),
+    ),
+  ];
+
+  @override
+  Future<List<CareNotification>> getNotifications({bool? isRead}) async {
+    getCalls++;
+    if (isRead == null) return List.of(notifications);
+    return notifications
+        .where((notification) => notification.isRead == isRead)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<CareNotification> setRead(String id, {required bool isRead}) async {
+    setReadCalls++;
+    final index = notifications.indexWhere((item) => item.id == id);
+    final updated = notifications[index].copyWith(
+      isRead: isRead,
+      readAt: isRead ? DateTime(2026, 9, 21, 8) : null,
+    );
+    notifications[index] = updated;
+    return updated;
+  }
+}
+
+class _FakeNotificationsApiClient extends ApiClient {
+  _FakeNotificationsApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastGetPath;
+  Map<String, dynamic>? lastQuery;
+  String? lastPatchPath;
+  Object? lastPatchBody;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    lastGetPath = path;
+    lastQuery = queryParameters;
+    return {
+      'data': [
+        {
+          'id': '91',
+          'type': 'APPOINTMENT_REMINDER',
+          'title': 'Appointment tomorrow',
+          'message': 'Your appointment begins at 09:30.',
+          'isRead': false,
+          'createdAt': '2026-09-20T08:30:00.000Z',
+          'readAt': null,
+        },
+      ],
+    };
+  }
+
+  @override
+  Future<Object?> patch(String path, {Object? body}) async {
+    lastPatchPath = path;
+    lastPatchBody = body;
+    return {
+      'id': '91',
+      'type': 'APPOINTMENT_REMINDER',
+      'title': 'Appointment tomorrow',
+      'message': 'Your appointment begins at 09:30.',
+      'isRead': true,
+      'createdAt': '2026-09-20T08:30:00.000Z',
+      'readAt': '2026-09-21T08:00:00.000Z',
+    };
   }
 }
 

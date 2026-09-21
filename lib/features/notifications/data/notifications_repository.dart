@@ -2,11 +2,18 @@ import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_endpoints.dart';
 import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
 
-class NotificationsRepository {
+abstract interface class NotificationsDataSource {
+  Future<List<CareNotification>> getNotifications({bool? isRead});
+
+  Future<CareNotification> setRead(String id, {required bool isRead});
+}
+
+class NotificationsRepository implements NotificationsDataSource {
   const NotificationsRepository(this._client);
 
   final ApiClient _client;
 
+  @override
   Future<List<CareNotification>> getNotifications({bool? isRead}) async {
     final response = await _client.get(
       ApiEndpoints.notifications,
@@ -19,6 +26,7 @@ class NotificationsRepository {
         .toList(growable: false);
   }
 
+  @override
   Future<CareNotification> setRead(String id, {required bool isRead}) async {
     final response = await _client.patch(
       ApiEndpoints.notificationRead(id),
