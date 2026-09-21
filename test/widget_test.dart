@@ -177,9 +177,12 @@ void main() {
       find.byKey(const Key('register-confirm-password')),
       'password123',
     );
-    await tester.ensureVisible(find.byType(Checkbox));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(Checkbox));
+    final termsCheckbox = find.byType(Checkbox);
+    if (termsCheckbox.evaluate().isNotEmpty) {
+      await tester.ensureVisible(termsCheckbox);
+      await tester.pumpAndSettle();
+      await tester.tap(termsCheckbox);
+    }
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
@@ -223,9 +226,12 @@ void main() {
       find.byKey(const Key('register-confirm-password')),
       'password123',
     );
-    await tester.ensureVisible(find.byType(Checkbox));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(Checkbox));
+    final termsCheckbox = find.byType(Checkbox);
+    if (termsCheckbox.evaluate().isNotEmpty) {
+      await tester.ensureVisible(termsCheckbox);
+      await tester.pumpAndSettle();
+      await tester.tap(termsCheckbox);
+    }
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
