@@ -89,17 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               Row(
                 children: [
-                  const CareConnectMark(size: 42),
-                  const SizedBox(width: 11),
-                  const Text(
-                    'CareConnect',
-                    style: TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
+                  const CareConnectLogo(width: 154),
                   const Spacer(),
                   TextButton(
                     key: const Key('skip-onboarding'),

@@ -56,18 +56,18 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryDark,
+      backgroundColor: AppColors.surface,
       body: Stack(
         children: [
           const Positioned(
             top: -100,
             right: -90,
-            child: _GlowOrb(size: 280, color: Color(0xFF159A8E)),
+            child: _GlowOrb(size: 280, color: AppColors.mintSoft),
           ),
           const Positioned(
             bottom: -130,
             left: -80,
-            child: _GlowOrb(size: 300, color: Color(0xFF0D665F)),
+            child: _GlowOrb(size: 300, color: AppColors.blueSoft),
           ),
           Center(
             child: FadeTransition(
@@ -77,23 +77,19 @@ class _SplashScreenState extends State<SplashScreen>
                 child: const Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CareConnectMark(size: 86, onDark: true),
-                    SizedBox(height: 26),
-                    Text(
-                      'CareConnect',
-                      key: Key('splash-title'),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 32),
+                      child: CareConnectLogo(
+                        key: Key('splash-title'),
+                        width: 286,
+                        showShadow: true,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 4),
                     Text(
                       'Care, made beautifully simple.',
                       style: TextStyle(
-                        color: Color(0xFFB9DCD8),
+                        color: AppColors.muted,
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),

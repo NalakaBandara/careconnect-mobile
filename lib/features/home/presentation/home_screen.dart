@@ -230,17 +230,7 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const CareConnectMark(size: 44),
-        const SizedBox(width: 11),
-        const Text(
-          'CareConnect',
-          style: TextStyle(
-            color: AppColors.ink,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-          ),
-        ),
+        const CareConnectLogo(width: 154),
         const Spacer(),
         IconButton.filledTonal(
           key: const Key('home-notifications-button'),

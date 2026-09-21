@@ -100,20 +100,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ListView(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
               children: [
-                const Row(
-                  children: [
-                    CareConnectMark(size: 42),
-                    SizedBox(width: 11),
-                    Text(
-                      'CareConnect',
-                      style: TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+                const Row(children: [CareConnectLogo(width: 154)]),
                 const SizedBox(height: 28),
                 const _AuthHero(),
                 const SizedBox(height: 30),
