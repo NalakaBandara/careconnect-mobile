@@ -14,6 +14,18 @@ abstract interface class AppointmentsDataSource {
 
   Future<CareAppointment> cancelAppointment(String id, {String? reason});
 
+  Future<List<AppointmentTimeSlot>> getAvailableSlots({
+    required CareAppointment appointment,
+    required String date,
+  });
+
+  Future<CareAppointment> rescheduleAppointment(
+    String id, {
+    required String appointmentDate,
+    required String startTime,
+    required String endTime,
+  });
+
   Future<CheckInRecord> getCheckIn(String appointmentId);
 }
 
@@ -56,6 +68,45 @@ class AppointmentsRepository implements AppointmentsDataSource {
       body: {
         'status': AppointmentStatus.cancelled.apiValue,
         if (reason?.trim().isNotEmpty ?? false) 'reason': reason!.trim(),
+      },
+    );
+    return CareAppointment.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<AppointmentTimeSlot>> getAvailableSlots({
+    required CareAppointment appointment,
+    required String date,
+  }) async {
+    final response = await _client.get(
+      ApiEndpoints.availableSlots(appointment.doctor.id),
+      queryParameters: {
+        'clinicId': appointment.clinic.id,
+        'serviceId': appointment.service.id,
+        'date': date,
+      },
+    );
+    final body = response as Map<String, dynamic>;
+    return (body['slots'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .where((slot) => slot['available'] == true)
+        .map(AppointmentTimeSlot.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<CareAppointment> rescheduleAppointment(
+    String id, {
+    required String appointmentDate,
+    required String startTime,
+    required String endTime,
+  }) async {
+    final response = await _client.patch(
+      ApiEndpoints.appointment(id),
+      body: {
+        'appointmentDate': appointmentDate,
+        'startTime': startTime,
+        'endTime': endTime,
       },
     );
     return CareAppointment.fromJson(response as Map<String, dynamic>);

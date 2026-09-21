@@ -146,7 +146,7 @@ class _SupportScreenState extends State<SupportScreen> {
     ),
     (
       'Can I change an appointment?',
-      'Cancellation is supported by the current API. Rescheduling will become active after the backend accepts new date and time fields.',
+      'Yes. Open an upcoming appointment to choose another available time or cancel the visit.',
     ),
     (
       'Is CareConnect an emergency service?',

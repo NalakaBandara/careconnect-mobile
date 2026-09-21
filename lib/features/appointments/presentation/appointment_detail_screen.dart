@@ -60,7 +60,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Future<void> _reschedule() async {
     final updated = await Navigator.of(context).push<CareAppointment>(
       MaterialPageRoute(
-        builder: (_) => RescheduleAppointmentScreen(appointment: _appointment),
+        builder: (_) => RescheduleAppointmentScreen(
+          appointment: _appointment,
+          repository: widget.repository,
+        ),
       ),
     );
     if (updated == null || !mounted) return;
@@ -121,18 +124,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           ],
           if (appointment.canChange) ...[
             const SizedBox(height: 26),
-            if (widget.repository == null) ...[
-              FilledButton.icon(
-                key: const Key('reschedule-appointment-button'),
-                onPressed: _reschedule,
-                icon: const Icon(Icons.edit_calendar_outlined),
-                label: const Text('Choose another time'),
-              ),
-              const SizedBox(height: 10),
-            ] else ...[
-              const _RescheduleUnavailable(),
-              const SizedBox(height: 10),
-            ],
+            FilledButton.icon(
+              key: const Key('reschedule-appointment-button'),
+              onPressed: _reschedule,
+              icon: const Icon(Icons.edit_calendar_outlined),
+              label: const Text('Choose another time'),
+            ),
+            const SizedBox(height: 10),
             OutlinedButton.icon(
               key: const Key('cancel-appointment-button'),
               onPressed: _cancel,
@@ -164,35 +162,6 @@ class _DetailError extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(child: Text(message, style: const TextStyle(fontSize: 12))),
         TextButton(onPressed: onRetry, child: const Text('Retry')),
-      ],
-    ),
-  );
-}
-
-class _RescheduleUnavailable extends StatelessWidget {
-  const _RescheduleUnavailable();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFF1D2),
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.info_outline_rounded, color: Color(0xFF93600A)),
-        SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            'Online rescheduling will be enabled when the backend accepts a new date and time.',
-            style: TextStyle(
-              color: Color(0xFF76500D),
-              fontSize: 11,
-              height: 1.4,
-            ),
-          ),
-        ),
       ],
     ),
   );

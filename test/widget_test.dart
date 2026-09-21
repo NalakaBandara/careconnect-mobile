@@ -1,5 +1,6 @@
 import 'package:careconnect_mobile/app/app.dart';
 import 'package:careconnect_mobile/core/network/api_client.dart';
+import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
@@ -11,6 +12,7 @@ import 'package:careconnect_mobile/features/booking/domain/appointment_booking.d
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
 import 'package:careconnect_mobile/features/auth/data/auth_service.dart';
 import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
+import 'package:careconnect_mobile/features/auth/presentation/auth_form_screen.dart';
 import 'package:careconnect_mobile/features/auth/presentation/welcome_screen.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
@@ -178,6 +180,54 @@ void main() {
     expect(auth.lastFirstName, 'Amara');
     expect(auth.lastPhone, '0771234567');
     expect(find.byKey(const Key('home-greeting')), findsOneWidget);
+  });
+
+  testWidgets('shows backend validation beside the matching auth field', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AuthFormScreen(
+          authService: _FieldErrorAuthDataSource(),
+          signUp: true,
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('register-first-name')),
+      'Amara',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register-last-name')),
+      'Silva',
+    );
+    await tester.enterText(
+      find.byKey(const Key('auth-email-field')),
+      'amara@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('auth-password-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register-confirm-password')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Email already registered'), findsOneWidget);
+    expect(find.text('A user with this email already exists'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('auth-email-field')),
+      'new@example.com',
+    );
+    await tester.pump();
+    expect(find.text('Email already registered'), findsNothing);
   });
 
   test('parses the self-hosted JWT authentication response', () {
@@ -539,6 +589,41 @@ void main() {
     expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
   });
 
+  testWidgets('loads real slots and reschedules a backend appointment', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAppointmentsDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AppointmentsScreen(repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('appointment-card-4821')));
+    await tester.pumpAndSettle();
+    final reschedule = find.byKey(const Key('reschedule-appointment-button'));
+    await tester.drag(
+      find.byKey(const Key('appointment-detail-screen')),
+      const Offset(0, -520),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(reschedule);
+    await tester.pumpAndSettle();
+
+    expect(repository.slotCalls, 1);
+    await tester.tap(find.byKey(const ValueKey('reschedule-time-11:00')));
+    await tester.tap(find.byKey(const Key('confirm-reschedule-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.rescheduleCalls, 1);
+    expect(repository.rescheduledStartTime, '11:00');
+    expect(repository.appointment.reference, 'CC-4821-MEH');
+    expect(find.text('11:00 – 11:20'), findsOneWidget);
+  });
+
   test('parses the backend appointment response contract', () {
     final appointment = CareAppointment.fromJson({
       'id': '42',
@@ -560,6 +645,7 @@ void main() {
       'startTime': '14:30',
       'endTime': '14:50',
       'status': 'PENDING',
+      'bookingReference': 'CC-4821-MEH',
       'reason': 'Review',
       'notes': null,
       'createdAt': '2026-09-17T09:00:00.000Z',
@@ -569,7 +655,7 @@ void main() {
     expect(appointment.status, AppointmentStatus.pending);
     expect(appointment.doctor.displayName, 'Dr. Maya Fernando');
     expect(appointment.service.durationMinutes, 20);
-    expect(appointment.reference, 'CC-000042');
+    expect(appointment.reference, 'CC-4821-MEH');
   });
 
   test('parses the backend check-in response contract', () {
@@ -737,10 +823,14 @@ class _FakeFindCareRepository implements FindCareDataSource {
 }
 
 class _FakeAppointmentsDataSource implements AppointmentsDataSource {
-  CareAppointment appointment = AppointmentsPreviewData.appointments.first;
+  CareAppointment appointment = AppointmentsPreviewData.appointments.first
+      .copyWith(bookingReference: 'CC-4821-MEH');
   int listCalls = 0;
   int detailCalls = 0;
+  int slotCalls = 0;
+  int rescheduleCalls = 0;
   String? cancelReason;
+  String? rescheduledStartTime;
 
   @override
   Future<List<CareAppointment>> getMyAppointments({
@@ -769,6 +859,18 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
   }
 
   @override
+  Future<List<AppointmentTimeSlot>> getAvailableSlots({
+    required CareAppointment appointment,
+    required String date,
+  }) async {
+    slotCalls++;
+    return const [
+      AppointmentTimeSlot(startTime: '11:00', endTime: '11:20'),
+      AppointmentTimeSlot(startTime: '11:30', endTime: '11:50'),
+    ];
+  }
+
+  @override
   Future<CheckInRecord> getCheckIn(String appointmentId) async => CheckInRecord(
     id: '11',
     appointmentId: appointmentId,
@@ -777,6 +879,23 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
     method: 'RECEPTION_QR',
     queueNumber: 7,
   );
+
+  @override
+  Future<CareAppointment> rescheduleAppointment(
+    String id, {
+    required String appointmentDate,
+    required String startTime,
+    required String endTime,
+  }) async {
+    rescheduleCalls++;
+    rescheduledStartTime = startTime;
+    appointment = appointment.copyWith(
+      appointmentDate: appointmentDate,
+      startTime: startTime,
+      endTime: endTime,
+    );
+    return appointment;
+  }
 }
 
 class _FakeUserDataSource implements UserDataSource {
@@ -861,6 +980,31 @@ class _FakeAuthDataSource implements AuthDataSource {
 
   @override
   Future<AuthSession?> restoreSession() async => null;
+}
+
+class _FieldErrorAuthDataSource extends _FakeAuthDataSource {
+  @override
+  Future<AuthSession> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    String? phone,
+  }) {
+    throw const ApiException(
+      statusCode: 409,
+      message: 'A user with this email already exists',
+      responseBody: {
+        'error': {
+          'code': 'CONFLICT',
+          'message': 'A user with this email already exists',
+          'fields': {
+            'email': ['Email already registered'],
+          },
+        },
+      },
+    );
+  }
 }
 
 class _FakeTokenStore implements TokenStore {

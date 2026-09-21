@@ -90,6 +90,19 @@ class AppointmentService {
       );
 }
 
+class AppointmentTimeSlot {
+  const AppointmentTimeSlot({required this.startTime, required this.endTime});
+
+  final String startTime;
+  final String endTime;
+
+  factory AppointmentTimeSlot.fromJson(Map<String, dynamic> json) =>
+      AppointmentTimeSlot(
+        startTime: json['startTime'] as String,
+        endTime: json['endTime'] as String,
+      );
+}
+
 class CareAppointment {
   const CareAppointment({
     required this.id,
@@ -102,6 +115,7 @@ class CareAppointment {
     required this.startTime,
     required this.endTime,
     required this.status,
+    this.bookingReference,
     this.reason,
     this.notes,
     this.createdAt,
@@ -118,6 +132,7 @@ class CareAppointment {
   final String startTime;
   final String endTime;
   final AppointmentStatus status;
+  final String? bookingReference;
   final String? reason;
   final String? notes;
   final DateTime? createdAt;
@@ -132,7 +147,9 @@ class CareAppointment {
   bool get canChange =>
       status == AppointmentStatus.pending ||
       status == AppointmentStatus.confirmed;
-  String get reference => 'CC-${id.padLeft(6, '0')}';
+  String get reference => bookingReference?.trim().isNotEmpty == true
+      ? bookingReference!.trim()
+      : 'CC-${id.padLeft(6, '0')}';
 
   CareAppointment copyWith({
     String? doctorScheduleId,
@@ -140,6 +157,7 @@ class CareAppointment {
     String? startTime,
     String? endTime,
     AppointmentStatus? status,
+    String? bookingReference,
     String? reason,
     String? notes,
   }) => CareAppointment(
@@ -153,6 +171,7 @@ class CareAppointment {
     startTime: startTime ?? this.startTime,
     endTime: endTime ?? this.endTime,
     status: status ?? this.status,
+    bookingReference: bookingReference ?? this.bookingReference,
     reason: reason ?? this.reason,
     notes: notes ?? this.notes,
     createdAt: createdAt,
@@ -174,6 +193,7 @@ class CareAppointment {
     startTime: json['startTime'] as String,
     endTime: json['endTime'] as String,
     status: AppointmentStatus.fromApi(json['status'] as String?),
+    bookingReference: json['bookingReference'] as String?,
     reason: json['reason'] as String?,
     notes: json['notes'] as String?,
     createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),

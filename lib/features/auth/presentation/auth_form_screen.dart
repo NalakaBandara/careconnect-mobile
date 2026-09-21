@@ -30,6 +30,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
   bool _obscurePassword = true;
   bool _busy = false;
   String? _error;
+  Map<String, String> _fieldErrors = const {};
 
   @override
   void dispose() {
@@ -49,6 +50,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _fieldErrors = const {};
     });
 
     try {
@@ -70,7 +72,18 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(session);
     } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted) {
+        final fieldErrors = error.fieldErrors.map(
+          (field, messages) => MapEntry(
+            field,
+            messages.isEmpty ? error.message : messages.first,
+          ),
+        );
+        setState(() {
+          _fieldErrors = fieldErrors;
+          _error = fieldErrors.isEmpty ? error.message : null;
+        });
+      }
     } catch (_) {
       if (mounted) {
         setState(
@@ -105,6 +118,13 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
       return 'Use at least 8 characters';
     }
     return null;
+  }
+
+  void _clearFieldError(String field) {
+    if (!_fieldErrors.containsKey(field)) return;
+    setState(() {
+      _fieldErrors = Map.of(_fieldErrors)..remove(field);
+    });
   }
 
   @override
@@ -152,7 +172,9 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                         textInputAction: TextInputAction.next,
                         textCapitalization: TextCapitalization.words,
                         autofillHints: const [AutofillHints.givenName],
+                        onChanged: (_) => _clearFieldError('firstName'),
                         validator: (value) => _required(value, 'First name'),
+                        forceErrorText: _fieldErrors['firstName'],
                         decoration: const InputDecoration(
                           labelText: 'First name',
                         ),
@@ -166,7 +188,9 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                         textInputAction: TextInputAction.next,
                         textCapitalization: TextCapitalization.words,
                         autofillHints: const [AutofillHints.familyName],
+                        onChanged: (_) => _clearFieldError('lastName'),
                         validator: (value) => _required(value, 'Last name'),
+                        forceErrorText: _fieldErrors['lastName'],
                         decoration: const InputDecoration(
                           labelText: 'Last name',
                         ),
@@ -183,7 +207,9 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
                 autocorrect: false,
+                onChanged: (_) => _clearFieldError('email'),
                 validator: _validateEmail,
+                forceErrorText: _fieldErrors['email'],
                 decoration: const InputDecoration(
                   labelText: 'Email address',
                   prefixIcon: Icon(Icons.mail_outline_rounded),
@@ -216,7 +242,9 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                 ],
                 enableSuggestions: false,
                 autocorrect: false,
+                onChanged: (_) => _clearFieldError('password'),
                 validator: _validatePassword,
+                forceErrorText: _fieldErrors['password'],
                 onFieldSubmitted: signUp ? null : (_) => _submit(),
                 decoration: InputDecoration(
                   labelText: 'Password',
