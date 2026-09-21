@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/network/api_exception.dart';
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
@@ -155,18 +156,30 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       _isSubmitting = true;
       _submitError = null;
     });
+    AppLogger.info('BOOKING', 'Sending appointment request');
     try {
       final appointment = await widget.repository!.createAppointment(draft);
       if (!mounted) return;
+      AppLogger.success(
+        'BOOKING',
+        'Appointment request created',
+        details: {'status': appointment.status.apiValue},
+      );
       widget.onAppointmentCreated?.call(appointment);
       _openConfirmation(draft, appointment.reference);
     } on ApiException catch (error) {
       if (!mounted) return;
+      AppLogger.warning(
+        'BOOKING',
+        'Appointment request rejected',
+        details: {'statusCode': error.statusCode},
+      );
       setState(() {
         _submitError = error.fieldError('startTime') ?? error.message;
       });
     } catch (_) {
       if (!mounted) return;
+      AppLogger.error('BOOKING', 'Appointment request failed');
       setState(() {
         _submitError =
             'We could not send your appointment request. Please try again.';

@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/app/app.dart';
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
@@ -72,6 +73,28 @@ void main() {
         {'id': '8', 'notes': '<redacted>'},
       ],
     });
+  });
+
+  test('application logs redact sensitive debug context', () {
+    final messages = <String>[];
+    final previousDebugPrint = debugPrint;
+    debugPrint = (message, {wrapWidth}) {
+      if (message != null) messages.add(message);
+    };
+    addTearDown(() => debugPrint = previousDebugPrint);
+
+    AppLogger.info(
+      'AUTH',
+      'Test event',
+      details: {'email': 'amara@example.com', 'userId': '8', 'count': 2},
+    );
+
+    final output = messages.join('\n');
+    expect(output, contains('[CareConnect][INFO][AUTH] Test event'));
+    expect(output, contains('"email":"<redacted>"'));
+    expect(output, contains('"userId":"<redacted>"'));
+    expect(output, contains('"count":2'));
+    expect(output, isNot(contains('amara@example.com')));
   });
 
   testWidgets('moves through onboarding and opens auth entry', (tester) async {

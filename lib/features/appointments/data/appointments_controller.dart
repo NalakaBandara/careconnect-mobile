@@ -1,3 +1,4 @@
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:flutter/foundation.dart';
@@ -31,6 +32,7 @@ class AppointmentsController extends ChangeNotifier {
 
   Future<void> _load() async {
     if (_disposed) return;
+    AppLogger.info('APPOINTMENTS', 'Loading appointment list');
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -39,9 +41,15 @@ class AppointmentsController extends ChangeNotifier {
       if (_disposed) return;
       _appointments = appointments;
       _hasLoaded = true;
+      AppLogger.success(
+        'APPOINTMENTS',
+        'Appointment list loaded',
+        details: {'count': appointments.length},
+      );
     } catch (error) {
       if (_disposed) return;
       _error = error;
+      AppLogger.error('APPOINTMENTS', 'Appointment list failed', error: error);
     } finally {
       if (!_disposed) {
         _isLoading = false;
@@ -62,6 +70,11 @@ class AppointmentsController extends ChangeNotifier {
     _appointments = List.unmodifiable(updated);
     _hasLoaded = true;
     _error = null;
+    AppLogger.info(
+      'APPOINTMENTS',
+      index == -1 ? 'Appointment added to shared state' : 'Appointment updated',
+      details: {'status': appointment.status.apiValue},
+    );
     notifyListeners();
   }
 

@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/features/notifications/data/notifications_preview_data.dart';
 import 'package:careconnect_mobile/features/notifications/data/notifications_repository.dart';
 import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
@@ -40,6 +41,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() async {
+    AppLogger.info('NOTIFICATIONS', 'Loading notifications');
     setState(() {
       _isLoading = true;
       _error = null;
@@ -48,8 +50,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final notifications = await widget.repository!.getNotifications();
       if (!mounted) return;
       setState(() => _notifications = notifications);
-    } catch (_) {
+      AppLogger.success(
+        'NOTIFICATIONS',
+        'Notifications loaded',
+        details: {
+          'count': notifications.length,
+          'unreadCount': notifications.where((item) => !item.isRead).length,
+        },
+      );
+    } catch (error) {
       if (!mounted) return;
+      AppLogger.error(
+        'NOTIFICATIONS',
+        'Notification loading failed',
+        error: error,
+      );
       setState(
         () => _error =
             'We could not load your notifications. Check your connection and try again.',
@@ -95,9 +110,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (currentIndex != -1) {
         setState(() => _notifications[currentIndex] = updated);
       }
+      AppLogger.success('NOTIFICATIONS', 'Notification marked as read');
       return true;
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return false;
+      AppLogger.error(
+        'NOTIFICATIONS',
+        'Read-status update failed',
+        error: error,
+      );
       final currentIndex = _notifications.indexWhere(
         (item) => item.id == notification.id,
       );

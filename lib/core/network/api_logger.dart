@@ -28,6 +28,10 @@ abstract final class ApiLogger {
     'reason',
     'notes',
     'message',
+    'userid',
+    'patientid',
+    'subject',
+    'sub',
   };
 
   static void request({
@@ -90,7 +94,6 @@ abstract final class ApiLogger {
     return value;
   }
 
-  @visibleForTesting
   static String formatPayload(Object? payload) {
     final formatted = jsonEncode(sanitize(payload));
     if (formatted.length <= _maxPayloadLength) return formatted;

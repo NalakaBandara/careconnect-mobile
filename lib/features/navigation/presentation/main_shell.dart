@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/network/api_client.dart';
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
@@ -78,6 +79,11 @@ class _MainShellState extends State<MainShell> {
 
   void _select(int index) {
     if (index == _selectedIndex) return;
+    AppLogger.info(
+      'NAV',
+      'Bottom tab changed',
+      details: {'fromIndex': _selectedIndex, 'toIndex': index},
+    );
     setState(() {
       _selectedIndex = index;
       _loadedIndexes.add(index);
@@ -95,6 +101,7 @@ class _MainShellState extends State<MainShell> {
   Future<void> _handleUnauthorized() async {
     if (_handlingUnauthorized) return;
     _handlingUnauthorized = true;
+    AppLogger.warning('AUTH', 'API rejected the current session');
     await widget.onSessionExpired?.call();
   }
 

@@ -1,3 +1,4 @@
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_endpoints.dart';
 import 'package:careconnect_mobile/core/network/api_exception.dart';
@@ -65,21 +66,28 @@ class AuthService implements AuthDataSource {
 
   @override
   Future<AuthSession?> restoreSession() async {
+    AppLogger.info('AUTH', 'Restoring encrypted session');
     final token = await _tokenStore.read();
-    if (token == null || token.isEmpty) return null;
+    if (token == null || token.isEmpty) {
+      AppLogger.info('AUTH', 'No saved session found');
+      return null;
+    }
 
     try {
       final response = await _protectedClient.get(ApiEndpoints.currentUser);
       if (response case {'data': final Map<String, dynamic> data}) {
-        return AuthSession(
+        final session = AuthSession(
           user: CurrentUser.fromJson(data),
           accessToken: token,
         );
+        AppLogger.success('AUTH', 'Session restored');
+        return session;
       }
       throw const FormatException('Missing user data');
     } on ApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 404) {
         await _tokenStore.delete();
+        AppLogger.warning('AUTH', 'Saved session is no longer valid');
         return null;
       }
       rethrow;
@@ -87,13 +95,13 @@ class AuthService implements AuthDataSource {
   }
 
   @override
-  Future<AuthSession> login({
-    required String email,
-    required String password,
-  }) => _authenticate(
-    ApiEndpoints.login,
-    body: {'email': email.trim().toLowerCase(), 'password': password},
-  );
+  Future<AuthSession> login({required String email, required String password}) {
+    AppLogger.info('AUTH', 'Starting sign in');
+    return _authenticate(
+      ApiEndpoints.login,
+      body: {'email': email.trim().toLowerCase(), 'password': password},
+    );
+  }
 
   @override
   Future<AuthSession> register({
@@ -102,16 +110,19 @@ class AuthService implements AuthDataSource {
     required String email,
     required String password,
     String? phone,
-  }) => _authenticate(
-    ApiEndpoints.register,
-    body: {
-      'firstName': firstName.trim(),
-      'lastName': lastName.trim(),
-      'email': email.trim().toLowerCase(),
-      'password': password,
-      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-    },
-  );
+  }) {
+    AppLogger.info('AUTH', 'Starting patient registration');
+    return _authenticate(
+      ApiEndpoints.register,
+      body: {
+        'firstName': firstName.trim(),
+        'lastName': lastName.trim(),
+        'email': email.trim().toLowerCase(),
+        'password': password,
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      },
+    );
+  }
 
   Future<AuthSession> _authenticate(
     String endpoint, {
@@ -123,6 +134,7 @@ class AuthService implements AuthDataSource {
     }
     final session = AuthSession.fromJson(response);
     await _tokenStore.write(session.accessToken);
+    AppLogger.success('AUTH', 'Authentication completed');
     return session;
   }
 
@@ -130,5 +142,8 @@ class AuthService implements AuthDataSource {
   Future<String?> accessToken() => _tokenStore.read();
 
   @override
-  Future<void> logout() => _tokenStore.delete();
+  Future<void> logout() async {
+    await _tokenStore.delete();
+    AppLogger.info('AUTH', 'Encrypted session cleared');
+  }
 }

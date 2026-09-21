@@ -1,3 +1,4 @@
+import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/splash_screen.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ class CareConnectApp extends StatelessWidget {
       title: 'CareConnect',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      navigatorObservers: [CareConnectNavigatorObserver()],
       home: const SplashScreen(),
     );
   }
