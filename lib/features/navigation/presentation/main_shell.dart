@@ -34,6 +34,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int _selectedIndex = widget.initialIndex;
+  late final Set<int> _loadedIndexes = {widget.initialIndex};
   ApiClient? _apiClient;
   AppointmentsDataSource? _appointmentsRepository;
   FindCareDataSource? _findCareRepository;
@@ -65,7 +66,13 @@ class _MainShellState extends State<MainShell> {
     super.dispose();
   }
 
-  void _select(int index) => setState(() => _selectedIndex = index);
+  void _select(int index) {
+    if (index == _selectedIndex) return;
+    setState(() {
+      _selectedIndex = index;
+      _loadedIndexes.add(index);
+    });
+  }
 
   void _updateUser(CurrentUser user) => setState(() => _user = user);
 
@@ -84,29 +91,41 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(
-        firstName: _user?.firstName,
-        repository: _appointmentsRepository,
-        onFindCare: () => _select(1),
-        onAppointments: () => _select(2),
-        onProfile: () => _select(3),
-        onNotifications: _openNotifications,
-      ),
-      FindCareScreen(
-        repository: _findCareRepository,
-        onNotifications: _openNotifications,
-      ),
-      AppointmentsScreen(
-        key: const ValueKey('appointments-page'),
-        repository: _appointmentsRepository,
-      ),
-      ProfileScreen(
-        user: _user,
-        repository: _userRepository,
-        onUserChanged: _updateUser,
-        onLogout: widget.onLogout,
-        onNotifications: _openNotifications,
-      ),
+      if (_loadedIndexes.contains(0))
+        HomeScreen(
+          firstName: _user?.firstName,
+          repository: _appointmentsRepository,
+          onFindCare: () => _select(1),
+          onAppointments: () => _select(2),
+          onProfile: () => _select(3),
+          onNotifications: _openNotifications,
+        )
+      else
+        const SizedBox.shrink(),
+      if (_loadedIndexes.contains(1))
+        FindCareScreen(
+          repository: _findCareRepository,
+          onNotifications: _openNotifications,
+        )
+      else
+        const SizedBox.shrink(),
+      if (_loadedIndexes.contains(2))
+        AppointmentsScreen(
+          key: const ValueKey('appointments-page'),
+          repository: _appointmentsRepository,
+        )
+      else
+        const SizedBox.shrink(),
+      if (_loadedIndexes.contains(3))
+        ProfileScreen(
+          user: _user,
+          repository: _userRepository,
+          onUserChanged: _updateUser,
+          onLogout: widget.onLogout,
+          onNotifications: _openNotifications,
+        )
+      else
+        const SizedBox.shrink(),
     ];
 
     return Scaffold(

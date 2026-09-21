@@ -282,14 +282,24 @@ void main() {
     expect(find.byKey(const Key('home-greeting')), findsOneWidget);
     expect(find.byKey(const Key('home-search')), findsOneWidget);
     expect(find.text('Next appointment'), findsOneWidget);
+    expect(find.byType(FindCareScreen, skipOffstage: false), findsNothing);
+    expect(find.byType(AppointmentsScreen, skipOffstage: false), findsNothing);
+    expect(find.byType(ProfileScreen, skipOffstage: false), findsNothing);
 
     await tester.tap(find.byKey(const Key('nav-find-care')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('find-care-title')), findsOneWidget);
+    expect(find.byType(FindCareScreen, skipOffstage: false), findsOneWidget);
+    expect(find.byType(AppointmentsScreen, skipOffstage: false), findsNothing);
 
     await tester.tap(find.byKey(const Key('nav-appointments')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('appointments-title')), findsOneWidget);
+    expect(find.byType(FindCareScreen, skipOffstage: false), findsOneWidget);
+    expect(
+      find.byType(AppointmentsScreen, skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('loads real appointment data on the home dashboard', (
