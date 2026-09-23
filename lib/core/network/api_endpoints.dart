@@ -22,6 +22,14 @@ abstract final class ApiEndpoints {
   static String clinicServices(Object id) => '${clinic(id)}/services';
   static String doctor(Object id) => '$doctors/$id';
   static String doctorSchedules(Object id) => '${doctor(id)}/schedules';
+  static String doctorSchedule(Object doctorId, Object scheduleId) =>
+      '${doctorSchedules(doctorId)}/$scheduleId';
+  static String doctorSpecialties(Object id) => '${doctor(id)}/specialties';
+  static String doctorSpecialty(Object doctorId, Object specialtyId) =>
+      '${doctorSpecialties(doctorId)}/$specialtyId';
+  static String doctorClinics(Object id) => '${doctor(id)}/clinics';
+  static String doctorClinic(Object doctorId, Object clinicId) =>
+      '${doctorClinics(doctorId)}/$clinicId';
   static String availableSlots(Object doctorId) =>
       '${doctor(doctorId)}/available-slots';
   static String appointment(Object id) => '$appointments/$id';

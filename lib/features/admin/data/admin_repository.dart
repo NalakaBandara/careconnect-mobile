@@ -27,6 +27,26 @@ abstract interface class AdminDataSource {
   Future<void> createClinic(AdminClinic clinic);
 
   Future<void> updateClinic(AdminClinic clinic, {String? status});
+
+  Future<List<AdminDoctorSchedule>> getDoctorSchedules(String doctorId);
+
+  Future<void> addDoctorSpecialty(String doctorId, String specialtyId);
+
+  Future<void> removeDoctorSpecialty(String doctorId, String specialtyId);
+
+  Future<void> addDoctorClinic(String doctorId, String clinicId);
+
+  Future<void> removeDoctorClinic(String doctorId, String clinicId);
+
+  Future<void> createDoctorSchedule(
+    String doctorId,
+    AdminDoctorSchedule schedule,
+  );
+
+  Future<void> updateDoctorSchedule(
+    String doctorId,
+    AdminDoctorSchedule schedule,
+  );
 }
 
 class AdminRepository implements AdminDataSource {
@@ -121,6 +141,65 @@ class AdminRepository implements AdminDataSource {
     await _client.put(
       ApiEndpoints.clinic(clinic.id),
       body: clinic.toRequestJson(statusOverride: status),
+    );
+  }
+
+  @override
+  Future<List<AdminDoctorSchedule>> getDoctorSchedules(String doctorId) async {
+    final response = await _client.get(ApiEndpoints.doctorSchedules(doctorId));
+    return _dataList(
+      _objectMap(response),
+    ).map(AdminDoctorSchedule.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<void> addDoctorSpecialty(String doctorId, String specialtyId) async {
+    await _client.post(
+      ApiEndpoints.doctorSpecialties(doctorId),
+      body: {'specialtyId': specialtyId},
+    );
+  }
+
+  @override
+  Future<void> removeDoctorSpecialty(
+    String doctorId,
+    String specialtyId,
+  ) async {
+    await _client.delete(ApiEndpoints.doctorSpecialty(doctorId, specialtyId));
+  }
+
+  @override
+  Future<void> addDoctorClinic(String doctorId, String clinicId) async {
+    await _client.post(
+      ApiEndpoints.doctorClinics(doctorId),
+      body: {'clinicId': clinicId},
+    );
+  }
+
+  @override
+  Future<void> removeDoctorClinic(String doctorId, String clinicId) async {
+    await _client.delete(ApiEndpoints.doctorClinic(doctorId, clinicId));
+  }
+
+  @override
+  Future<void> createDoctorSchedule(
+    String doctorId,
+    AdminDoctorSchedule schedule,
+  ) async {
+    await _client.post(
+      ApiEndpoints.doctorSchedules(doctorId),
+      body: schedule.toRequestJson(),
+    );
+  }
+
+  @override
+  Future<void> updateDoctorSchedule(
+    String doctorId,
+    AdminDoctorSchedule schedule,
+  ) async {
+    await _client.put(
+      ApiEndpoints.doctorSchedule(doctorId, schedule.id),
+      body: schedule.toRequestJson(),
     );
   }
 

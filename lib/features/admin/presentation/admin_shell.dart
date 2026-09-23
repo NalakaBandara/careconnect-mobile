@@ -4,6 +4,7 @@ import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_management_forms.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_operations_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -395,6 +396,20 @@ class _ManagementPageState extends State<_ManagementPage> {
     if (changed == true) await widget.onRefresh();
   }
 
+  Future<void> _openDoctorOperations(AdminDoctor doctor) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AdminDoctorOperationsScreen(
+          doctor: doctor,
+          clinics: widget.data.clinics,
+          specialties: widget.data.specialties,
+          repository: widget.repository,
+          onChanged: widget.onRefresh,
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleClinic(AdminClinic clinic, bool active) async {
     try {
       await widget.repository.updateClinic(
@@ -484,6 +499,7 @@ class _ManagementPageState extends State<_ManagementPage> {
                           (doctor) => _DoctorAdminCard(
                             doctor: doctor,
                             onEdit: () => _openDoctor(doctor),
+                            onSetup: () => _openDoctorOperations(doctor),
                           ),
                         )
                         .toList(),
@@ -508,10 +524,15 @@ class _ManagementPageState extends State<_ManagementPage> {
 }
 
 class _DoctorAdminCard extends StatelessWidget {
-  const _DoctorAdminCard({required this.doctor, required this.onEdit});
+  const _DoctorAdminCard({
+    required this.doctor,
+    required this.onEdit,
+    required this.onSetup,
+  });
 
   final AdminDoctor doctor;
   final VoidCallback onEdit;
+  final VoidCallback onSetup;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -563,7 +584,17 @@ class _DoctorAdminCard extends StatelessWidget {
             ],
           ),
         ),
-        IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+        IconButton(
+          key: Key('admin-doctor-setup-${doctor.id}'),
+          tooltip: 'Assignments and schedules',
+          onPressed: onSetup,
+          icon: const Icon(Icons.event_available_outlined),
+        ),
+        IconButton(
+          tooltip: 'Edit profile',
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined),
+        ),
       ],
     ),
   );

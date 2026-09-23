@@ -171,3 +171,43 @@ class AdminClinic {
     'status': statusOverride ?? status,
   };
 }
+
+class AdminDoctorSchedule {
+  const AdminDoctorSchedule({
+    required this.id,
+    required this.clinicId,
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+    required this.slotDurationMinutes,
+    required this.isActive,
+  });
+
+  final String id;
+  final String clinicId;
+  final String dayOfWeek;
+  final String startTime;
+  final String endTime;
+  final int slotDurationMinutes;
+  final bool isActive;
+
+  factory AdminDoctorSchedule.fromJson(Map<String, dynamic> json) =>
+      AdminDoctorSchedule(
+        id: json['id'].toString(),
+        clinicId: json['clinicId'].toString(),
+        dayOfWeek: json['dayOfWeek'] as String? ?? 'MONDAY',
+        startTime: json['startTime'] as String? ?? '09:00',
+        endTime: json['endTime'] as String? ?? '17:00',
+        slotDurationMinutes: json['slotDurationMinutes'] as int? ?? 30,
+        isActive: json['isActive'] as bool? ?? true,
+      );
+
+  Map<String, dynamic> toRequestJson() => {
+    'clinicId': clinicId,
+    'dayOfWeek': dayOfWeek,
+    'startTime': startTime,
+    'endTime': endTime,
+    'slotDurationMinutes': slotDurationMinutes,
+    'isActive': isActive,
+  };
+}

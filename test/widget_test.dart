@@ -1191,6 +1191,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('1 doctor profiles'), findsOneWidget);
     expect(find.text('Dr. Maya Fernando'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('admin-doctor-setup-3')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-doctor-operations')), findsOneWidget);
+    expect(find.text('Weekly schedules'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Clinics'));
     await tester.pumpAndSettle();
@@ -1232,6 +1238,18 @@ class _FakeAdminDataSource implements AdminDataSource {
   }) async {}
 
   @override
+  Future<void> addDoctorClinic(String doctorId, String clinicId) async {}
+
+  @override
+  Future<void> addDoctorSpecialty(String doctorId, String specialtyId) async {}
+
+  @override
+  Future<void> createDoctorSchedule(
+    String doctorId,
+    AdminDoctorSchedule schedule,
+  ) async {}
+
+  @override
   Future<AdminDashboardSnapshot> getDashboard() async =>
       const AdminDashboardSnapshot(
         users: [
@@ -1252,8 +1270,10 @@ class _FakeAdminDataSource implements AdminDataSource {
             firstName: 'Maya',
             lastName: 'Fernando',
             isVerified: true,
-            specialties: [],
-            clinics: [],
+            specialties: [CareSpecialty(id: '2', name: 'Cardiology')],
+            clinics: [
+              CareClinicSummary(id: '1', name: 'Northgate Medical Centre'),
+            ],
           ),
         ],
         clinics: [
@@ -1266,9 +1286,32 @@ class _FakeAdminDataSource implements AdminDataSource {
             status: 'ACTIVE',
           ),
         ],
-        specialties: [],
+        specialties: [CareSpecialty(id: '2', name: 'Cardiology')],
         appointments: AppointmentsPreviewData.appointments,
       );
+
+  @override
+  Future<List<AdminDoctorSchedule>> getDoctorSchedules(String doctorId) async =>
+      const [
+        AdminDoctorSchedule(
+          id: '10',
+          clinicId: '1',
+          dayOfWeek: 'MONDAY',
+          startTime: '09:00',
+          endTime: '17:00',
+          slotDurationMinutes: 30,
+          isActive: true,
+        ),
+      ];
+
+  @override
+  Future<void> removeDoctorClinic(String doctorId, String clinicId) async {}
+
+  @override
+  Future<void> removeDoctorSpecialty(
+    String doctorId,
+    String specialtyId,
+  ) async {}
 
   @override
   Future<void> updateClinic(AdminClinic clinic, {String? status}) async {
@@ -1282,6 +1325,12 @@ class _FakeAdminDataSource implements AdminDataSource {
     int? yearsOfExperience,
     required bool isVerified,
   }) async {}
+
+  @override
+  Future<void> updateDoctorSchedule(
+    String doctorId,
+    AdminDoctorSchedule schedule,
+  ) async {}
 }
 
 class _FakeFindCareRepository implements FindCareDataSource {
