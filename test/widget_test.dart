@@ -4,6 +4,9 @@ import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
+import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_shell.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
@@ -1129,6 +1132,87 @@ void main() {
       'profilePhoto': null,
     });
   });
+
+  test('recognizes the backend ADMIN role without changing patient roles', () {
+    const admin = CurrentUser(
+      id: '1',
+      email: 'admin@careconnect.test',
+      firstName: 'Care',
+      lastName: 'Admin',
+      roles: ['ADMIN', 'PATIENT'],
+    );
+    const patient = CurrentUser(
+      id: '2',
+      email: 'patient@careconnect.test',
+      firstName: 'Care',
+      lastName: 'Patient',
+      roles: ['PATIENT'],
+    );
+
+    expect(admin.isAdmin, isTrue);
+    expect(patient.isAdmin, isFalse);
+  });
+
+  testWidgets('shows live admin sections from the admin repository', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    const admin = CurrentUser(
+      id: '1',
+      email: 'admin@careconnect.test',
+      firstName: 'Nalaka',
+      lastName: 'Admin',
+      roles: ['ADMIN'],
+      status: 'ACTIVE',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AdminShell(
+          user: admin,
+          accessTokenProvider: () async => 'admin-token',
+          repository: _FakeAdminDataSource(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('admin-dashboard')), findsOneWidget);
+    expect(find.text('Good day, Nalaka'), findsOneWidget);
+    expect(find.text('12'), findsOneWidget);
+    expect(find.text('Pending visits'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('admin-nav-users')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-users')), findsOneWidget);
+    expect(find.text('Amara Silva'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('admin-nav-visits')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-appointments')), findsOneWidget);
+    expect(find.text('Dr. Maya Fernando'), findsOneWidget);
+  });
+}
+
+class _FakeAdminDataSource implements AdminDataSource {
+  @override
+  Future<AdminDashboardSnapshot> getDashboard() async =>
+      const AdminDashboardSnapshot(
+        users: [
+          AdminUser(
+            id: '8',
+            email: 'amara@example.com',
+            firstName: 'Amara',
+            lastName: 'Silva',
+            roles: ['PATIENT'],
+            status: 'ACTIVE',
+          ),
+        ],
+        totalUsers: 12,
+        doctorCount: 4,
+        clinicCount: 3,
+        appointments: AppointmentsPreviewData.appointments,
+      );
 }
 
 class _FakeFindCareRepository implements FindCareDataSource {

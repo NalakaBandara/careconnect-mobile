@@ -22,6 +22,7 @@ class CurrentUser {
   final String? status;
 
   String get displayName => '$firstName $lastName'.trim();
+  bool get isAdmin => roles.any((role) => role.toUpperCase() == 'ADMIN');
 
   CurrentUser copyWith({
     String? firstName,

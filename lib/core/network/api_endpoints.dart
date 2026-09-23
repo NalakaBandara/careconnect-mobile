@@ -5,6 +5,7 @@ abstract final class ApiEndpoints {
   static const login = '$auth/login';
   static const register = '$auth/register';
   static const currentUser = '$apiVersion/users/me';
+  static const users = '$apiVersion/users';
   static const clinics = '$apiVersion/clinics';
   static const doctors = '$apiVersion/doctors';
   static const specialties = '$apiVersion/specialties';
@@ -12,6 +13,9 @@ abstract final class ApiEndpoints {
   static const appointments = '$apiVersion/appointments';
   static const myAppointments = '$appointments/me';
   static const notifications = '$apiVersion/notifications';
+  static const roles = '$apiVersion/roles';
+  static const userRoles = '$apiVersion/user-roles';
+  static const auditLogs = '$apiVersion/audit-logs';
 
   static String clinic(Object id) => '$clinics/$id';
   static String clinicDoctors(Object id) => '${clinic(id)}/doctors';
@@ -25,4 +29,5 @@ abstract final class ApiEndpoints {
       '${appointment(id)}/status-history';
   static String appointmentCheckIn(Object id) => '${appointment(id)}/check-in';
   static String notificationRead(Object id) => '$notifications/$id/read';
+  static String user(Object id) => '$users/$id';
 }

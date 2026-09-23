@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_shell.dart';
 import 'package:careconnect_mobile/features/auth/data/auth_service.dart';
 import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
 import 'package:careconnect_mobile/features/auth/presentation/auth_form_screen.dart';
@@ -77,6 +78,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget _buildHome(BuildContext homeContext, {required CurrentUser user}) {
     final homeBuilder = widget.homeBuilder;
     if (homeBuilder != null) return homeBuilder(homeContext, user);
+
+    if (user.isAdmin) {
+      return AdminShell(
+        user: user,
+        accessTokenProvider: _authService.accessToken,
+        onLogout: () => _returnToWelcome(homeContext),
+        onSessionExpired: () => _returnToWelcome(
+          homeContext,
+          message: 'Your session expired. Please sign in again.',
+        ),
+      );
+    }
 
     return MainShell(
       user: user,
