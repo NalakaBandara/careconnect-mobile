@@ -7,11 +7,20 @@ import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
+typedef AuthenticatedHomeBuilder =
+    Widget Function(BuildContext context, CurrentUser user);
+
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({this.authService, this.initialMessage, super.key});
+  const WelcomeScreen({
+    this.authService,
+    this.initialMessage,
+    this.homeBuilder,
+    super.key,
+  });
 
   final AuthDataSource? authService;
   final String? initialMessage;
+  final AuthenticatedHomeBuilder? homeBuilder;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -65,16 +74,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     ),
   );
 
-  Widget _buildHome(BuildContext homeContext, {required CurrentUser user}) =>
-      MainShell(
-        user: user,
-        accessTokenProvider: _authService.accessToken,
-        onLogout: () => _returnToWelcome(homeContext),
-        onSessionExpired: () => _returnToWelcome(
-          homeContext,
-          message: 'Your session expired. Please sign in again.',
+  Widget _buildHome(BuildContext homeContext, {required CurrentUser user}) {
+    final homeBuilder = widget.homeBuilder;
+    if (homeBuilder != null) return homeBuilder(homeContext, user);
+
+    return MainShell(
+      user: user,
+      accessTokenProvider: _authService.accessToken,
+      onLogout: () => _returnToWelcome(homeContext),
+      onSessionExpired: () => _returnToWelcome(
+        homeContext,
+        message: 'Your session expired. Please sign in again.',
+      ),
+    );
+  }
+
+  void _openGuestExperience() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (guestContext) => MainShell(
+          onSignInRequired: () => Navigator.of(guestContext).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => WelcomeScreen(
+                authService: _authService,
+                homeBuilder: widget.homeBuilder,
+              ),
+            ),
+          ),
         ),
-      );
+      ),
+    );
+  }
 
   Future<void> _returnToWelcome(
     BuildContext homeContext, {
@@ -84,8 +114,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (!homeContext.mounted) return;
     Navigator.of(homeContext).pushAndRemoveUntil(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            WelcomeScreen(authService: _authService, initialMessage: message),
+        builder: (_) => WelcomeScreen(
+          authService: _authService,
+          initialMessage: message,
+          homeBuilder: widget.homeBuilder,
+        ),
       ),
       (_) => false,
     );
@@ -131,13 +164,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const SizedBox(height: 10),
                 TextButton.icon(
                   key: const Key('browse-as-guest-button'),
-                  onPressed: _busy
-                      ? null
-                      : () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const MainShell(),
-                          ),
-                        ),
+                  onPressed: _busy ? null : _openGuestExperience,
                   icon: const Icon(Icons.explore_outlined, size: 19),
                   label: const Text('Explore as guest'),
                 ),

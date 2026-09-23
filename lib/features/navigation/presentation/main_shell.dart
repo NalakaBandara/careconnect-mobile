@@ -22,14 +22,20 @@ class MainShell extends StatefulWidget {
     this.user,
     this.onLogout,
     this.onSessionExpired,
+    this.onSignInRequired,
     this.accessTokenProvider,
+    this.guestFindCareRepository,
+    this.useLiveGuestDirectory = true,
     this.initialIndex = 0,
   });
 
   final CurrentUser? user;
   final Future<void> Function()? onLogout;
   final Future<void> Function()? onSessionExpired;
+  final VoidCallback? onSignInRequired;
   final AccessTokenProvider? accessTokenProvider;
+  final FindCareDataSource? guestFindCareRepository;
+  final bool useLiveGuestDirectory;
   final int initialIndex;
 
   @override
@@ -67,8 +73,16 @@ class _MainShellState extends State<MainShell> {
       _bookingRepository = AppointmentBookingRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
       _userRepository = UserRepository(_apiClient!);
+    } else if (widget.useLiveGuestDirectory) {
+      _findCareRepository = widget.guestFindCareRepository;
+      if (_findCareRepository == null) {
+        _apiClient = ApiClient(accessTokenProvider: _noAccessToken);
+        _findCareRepository = FindCareRepository(_apiClient!);
+      }
     }
   }
+
+  static Future<String?> _noAccessToken() async => null;
 
   @override
   void dispose() {
@@ -130,6 +144,8 @@ class _MainShellState extends State<MainShell> {
           repository: _findCareRepository,
           bookingRepository: _bookingRepository,
           currentUser: _user,
+          canLoadAvailability: widget.accessTokenProvider != null,
+          onSignInRequired: widget.onSignInRequired,
           onAppointmentCreated: _appointmentCreated,
           onViewAppointments: _viewAppointments,
           onNotifications: _openNotifications,

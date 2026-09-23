@@ -14,6 +14,8 @@ class ProfessionalProfileScreen extends StatefulWidget {
     this.repository,
     this.bookingRepository,
     this.currentUser,
+    this.canLoadAvailability = true,
+    this.onSignInRequired,
     this.onAppointmentCreated,
     this.onViewAppointments,
   });
@@ -22,6 +24,8 @@ class ProfessionalProfileScreen extends StatefulWidget {
   final FindCareDataSource? repository;
   final AppointmentBookingDataSource? bookingRepository;
   final CurrentUser? currentUser;
+  final bool canLoadAvailability;
+  final VoidCallback? onSignInRequired;
   final ValueChanged<CareAppointment>? onAppointmentCreated;
   final VoidCallback? onViewAppointments;
 
@@ -66,7 +70,9 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
         _selectedDay = 0;
         _selectedTime = null;
       });
-      if (profile.clinics.isNotEmpty) await _loadAvailability();
+      if (widget.canLoadAvailability && profile.clinics.isNotEmpty) {
+        await _loadAvailability();
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -121,10 +127,16 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
 
   void _selectClinic(int index) {
     setState(() => _selectedClinic = index);
-    if (widget.repository != null) _loadAvailability();
+    if (widget.repository != null && widget.canLoadAvailability) {
+      _loadAvailability();
+    }
   }
 
   void _beginBooking() {
+    if (widget.currentUser == null && widget.onSignInRequired != null) {
+      widget.onSignInRequired!();
+      return;
+    }
     if (professional.services.isEmpty ||
         professional.clinics.isEmpty ||
         professional.availability.isEmpty) {
@@ -379,7 +391,9 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
           onPressed: _isLoading || _availabilityLoading ? null : _beginBooking,
           icon: const Icon(Icons.calendar_month_rounded, size: 20),
           label: Text(
-            _selectedTime == null
+            widget.currentUser == null && widget.onSignInRequired != null
+                ? 'Sign in to book'
+                : _selectedTime == null
                 ? 'Choose a time to book'
                 : 'Continue with $_selectedTime',
           ),

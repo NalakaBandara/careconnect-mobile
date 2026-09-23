@@ -14,6 +14,8 @@ class FindCareScreen extends StatefulWidget {
     this.repository,
     this.bookingRepository,
     this.currentUser,
+    this.canLoadAvailability = true,
+    this.onSignInRequired,
     this.onAppointmentCreated,
     this.onViewAppointments,
     this.onNotifications,
@@ -22,6 +24,8 @@ class FindCareScreen extends StatefulWidget {
   final FindCareDataSource? repository;
   final AppointmentBookingDataSource? bookingRepository;
   final CurrentUser? currentUser;
+  final bool canLoadAvailability;
+  final VoidCallback? onSignInRequired;
   final ValueChanged<CareAppointment>? onAppointmentCreated;
   final VoidCallback? onViewAppointments;
   final VoidCallback? onNotifications;
@@ -353,6 +357,8 @@ class _FindCareScreenState extends State<FindCareScreen> {
                               repository: widget.repository,
                               bookingRepository: widget.bookingRepository,
                               currentUser: widget.currentUser,
+                              canLoadAvailability: widget.canLoadAvailability,
+                              onSignInRequired: widget.onSignInRequired,
                               onAppointmentCreated: widget.onAppointmentCreated,
                               onViewAppointments: widget.onViewAppointments,
                             ),

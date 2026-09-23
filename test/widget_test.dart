@@ -41,6 +41,11 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
+  Widget buildOfflineAuthenticatedHome(
+    BuildContext context,
+    CurrentUser user,
+  ) => MainShell(user: user, useLiveGuestDirectory: false);
+
   testWidgets('shows splash then opens onboarding', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(const CareConnectApp());
@@ -133,7 +138,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: WelcomeScreen(authService: auth),
+        home: WelcomeScreen(
+          authService: auth,
+          homeBuilder: buildOfflineAuthenticatedHome,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -167,7 +175,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: WelcomeScreen(authService: auth),
+        home: WelcomeScreen(
+          authService: auth,
+          homeBuilder: buildOfflineAuthenticatedHome,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -314,7 +325,10 @@ void main() {
   ) async {
     usePhoneSize(tester);
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.light, home: const MainShell()),
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const MainShell(useLiveGuestDirectory: false),
+      ),
     );
 
     expect(find.byKey(const Key('home-greeting')), findsOneWidget);
@@ -340,6 +354,34 @@ void main() {
     );
   });
 
+  testWidgets('loads the public care directory for a guest', (tester) async {
+    usePhoneSize(tester);
+    final repository = _FakeFindCareRepository();
+    var signInRequested = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(
+          initialIndex: 1,
+          guestFindCareRepository: repository,
+          onSignInRequired: () => signInRequested = true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dr. Nadeesha Fernando'), findsOneWidget);
+    expect(find.text('1 professional'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('professional-22')));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in to book'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('book-professional-button')));
+    expect(signInRequested, isTrue);
+  });
+
   testWidgets('loads real appointment data on the home dashboard', (
     tester,
   ) async {
@@ -362,7 +404,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.listCalls, 1);
-    expect(find.text('Good morning, Amara'), findsOneWidget);
+    expect(find.byKey(const Key('home-greeting')), findsOneWidget);
+    expect(find.textContaining('Amara'), findsWidgets);
     expect(find.text('1 upcoming visit'), findsOneWidget);
 
     await tester.drag(
@@ -411,7 +454,10 @@ void main() {
   ) async {
     usePhoneSize(tester);
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.light, home: const MainShell()),
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const MainShell(useLiveGuestDirectory: false),
+      ),
     );
 
     await tester.tap(find.byKey(const Key('home-notifications-button')));
@@ -612,6 +658,16 @@ void main() {
     expect(professional.displayName, 'Dr. Nadeesha Fernando');
     expect(professional.primarySpecialty, 'Cardiology');
     expect(professional.isVerified, isTrue);
+  });
+
+  test('unwraps the latest backend doctor detail response', () async {
+    final repository = FindCareRepository(_FakeDoctorDetailApiClient());
+
+    final professional = await repository.getDoctor('22');
+
+    expect(professional.id, '22');
+    expect(professional.displayName, 'Dr. Nadeesha Fernando');
+    expect(professional.primarySpecialty, 'Cardiology');
   });
 
   testWidgets('completes the preview appointment request journey', (
@@ -1176,6 +1232,34 @@ class _FakeAvailabilityApiClient extends ApiClient {
       ],
     };
   }
+}
+
+class _FakeDoctorDetailApiClient extends ApiClient {
+  _FakeDoctorDetailApiClient() : super(accessTokenProvider: _noToken);
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async => {
+    'data': {
+      'id': '22',
+      'firstName': 'Nadeesha',
+      'lastName': 'Fernando',
+      'profilePhoto': null,
+      'bio': 'Cardiac care',
+      'yearsOfExperience': 8,
+      'isVerified': true,
+      'specialties': [
+        {'id': '12', 'name': 'Cardiology', 'description': null},
+      ],
+      'clinics': [
+        {'id': '7', 'name': 'Harbour Medical Centre'},
+      ],
+    },
+  };
 }
 
 class _FakeAppointmentsDataSource implements AppointmentsDataSource {

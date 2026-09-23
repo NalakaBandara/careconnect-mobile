@@ -65,7 +65,13 @@ class FindCareRepository implements FindCareDataSource {
 
   Future<CareProfessional> getDoctor(String id) async {
     final response = await _client.get(ApiEndpoints.doctor(id));
-    return CareProfessional.fromJson(response as Map<String, dynamic>);
+    if (response case {'data': final Map<String, dynamic> data}) {
+      return CareProfessional.fromJson(data);
+    }
+    if (response is Map<String, dynamic>) {
+      return CareProfessional.fromJson(response);
+    }
+    throw const FormatException('Missing doctor data');
   }
 
   Future<List<CareService>> getDoctorServices(String doctorId) async {
