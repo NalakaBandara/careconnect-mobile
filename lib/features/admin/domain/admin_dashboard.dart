@@ -42,6 +42,7 @@ class AdminDashboardSnapshot {
     required this.doctors,
     required this.clinics,
     required this.specialties,
+    required this.services,
     required this.appointments,
   });
 
@@ -50,6 +51,7 @@ class AdminDashboardSnapshot {
   final List<AdminDoctor> doctors;
   final List<AdminClinic> clinics;
   final List<CareSpecialty> specialties;
+  final List<CareService> services;
   final List<CareAppointment> appointments;
 
   int get doctorCount => doctors.length;
@@ -279,4 +281,36 @@ class AdminAuditLog {
     entityId: json['entityId']?.toString(),
     createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
   );
+}
+
+class AdminClinicOperatingHour {
+  const AdminClinicOperatingHour({
+    required this.dayOfWeek,
+    required this.isClosed,
+    this.id,
+    this.openingTime,
+    this.closingTime,
+  });
+
+  final String? id;
+  final String dayOfWeek;
+  final String? openingTime;
+  final String? closingTime;
+  final bool isClosed;
+
+  factory AdminClinicOperatingHour.fromJson(Map<String, dynamic> json) =>
+      AdminClinicOperatingHour(
+        id: json['id']?.toString(),
+        dayOfWeek: json['dayOfWeek'] as String? ?? 'MONDAY',
+        openingTime: json['openingTime'] as String?,
+        closingTime: json['closingTime'] as String?,
+        isClosed: json['isClosed'] as bool? ?? false,
+      );
+
+  Map<String, dynamic> toRequestJson() => {
+    'dayOfWeek': dayOfWeek,
+    'openingTime': isClosed ? null : openingTime,
+    'closingTime': isClosed ? null : closingTime,
+    'isClosed': isClosed,
+  };
 }

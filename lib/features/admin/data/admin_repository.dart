@@ -66,6 +66,27 @@ abstract interface class AdminDataSource {
     String? userId,
     String? entityType,
   });
+
+  Future<List<AdminClinicOperatingHour>> getClinicOperatingHours(
+    String clinicId,
+  );
+
+  Future<void> updateClinicOperatingHours(
+    String clinicId,
+    List<AdminClinicOperatingHour> hours,
+  );
+
+  Future<List<CareService>> getClinicServices(String clinicId);
+
+  Future<void> addClinicService(String clinicId, String serviceId);
+
+  Future<void> removeClinicService(String clinicId, String serviceId);
+
+  Future<List<AdminUser>> getClinicUsers(String clinicId);
+
+  Future<void> addClinicUser(String clinicId, String userId);
+
+  Future<void> removeClinicUser(String clinicId, String userId);
 }
 
 class AdminRepository implements AdminDataSource {
@@ -84,6 +105,7 @@ class AdminRepository implements AdminDataSource {
       _client.get(ApiEndpoints.clinics),
       _client.get(ApiEndpoints.appointments),
       _client.get(ApiEndpoints.specialties),
+      _client.get(ApiEndpoints.services),
     ]);
 
     final usersBody = _objectMap(responses[0]);
@@ -91,6 +113,7 @@ class AdminRepository implements AdminDataSource {
     final clinicsBody = _objectMap(responses[2]);
     final appointmentsBody = _objectMap(responses[3]);
     final specialtiesBody = _objectMap(responses[4]);
+    final servicesBody = _objectMap(responses[5]);
     final users = _dataList(usersBody).map(AdminUser.fromJson).toList();
     final appointments = _dataList(
       appointmentsBody,
@@ -104,6 +127,7 @@ class AdminRepository implements AdminDataSource {
       specialties: _dataList(
         specialtiesBody,
       ).map(CareSpecialty.fromJson).toList(),
+      services: _dataList(servicesBody).map(CareService.fromJson).toList(),
       appointments: appointments,
     );
   }
@@ -282,6 +306,71 @@ class AdminRepository implements AdminDataSource {
     return _dataList(
       _objectMap(response),
     ).map(AdminAuditLog.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<AdminClinicOperatingHour>> getClinicOperatingHours(
+    String clinicId,
+  ) async {
+    final response = await _client.get(
+      ApiEndpoints.clinicOperatingHours(clinicId),
+    );
+    return _dataList(
+      _objectMap(response),
+    ).map(AdminClinicOperatingHour.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<void> updateClinicOperatingHours(
+    String clinicId,
+    List<AdminClinicOperatingHour> hours,
+  ) async {
+    await _client.put(
+      ApiEndpoints.clinicOperatingHours(clinicId),
+      body: {'hours': hours.map((hour) => hour.toRequestJson()).toList()},
+    );
+  }
+
+  @override
+  Future<List<CareService>> getClinicServices(String clinicId) async {
+    final response = await _client.get(ApiEndpoints.clinicServices(clinicId));
+    return _dataList(
+      _objectMap(response),
+    ).map(CareService.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<void> addClinicService(String clinicId, String serviceId) async {
+    await _client.post(
+      ApiEndpoints.clinicServices(clinicId),
+      body: {'serviceId': serviceId},
+    );
+  }
+
+  @override
+  Future<void> removeClinicService(String clinicId, String serviceId) async {
+    await _client.delete(ApiEndpoints.clinicService(clinicId, serviceId));
+  }
+
+  @override
+  Future<List<AdminUser>> getClinicUsers(String clinicId) async {
+    final response = await _client.get(ApiEndpoints.clinicUsers(clinicId));
+    return _dataList(
+      _objectMap(response),
+    ).map(AdminUser.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<void> addClinicUser(String clinicId, String userId) async {
+    await _client.post(
+      ApiEndpoints.clinicUsers(clinicId),
+      body: {'userId': userId},
+    );
+  }
+
+  @override
+  Future<void> removeClinicUser(String clinicId, String userId) async {
+    await _client.delete(ApiEndpoints.clinicUser(clinicId, userId));
   }
 
   static Map<String, dynamic> _objectMap(Object? value) {

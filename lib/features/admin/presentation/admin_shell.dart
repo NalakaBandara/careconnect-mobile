@@ -7,6 +7,7 @@ import 'package:careconnect_mobile/features/admin/presentation/admin_management_
 import 'package:careconnect_mobile/features/admin/presentation/admin_security_screens.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_operations_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_clinic_operations_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -406,6 +407,19 @@ class _ManagementPageState extends State<_ManagementPage> {
     if (changed == true) await widget.onRefresh();
   }
 
+  Future<void> _openClinicOperations(AdminClinic clinic) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AdminClinicOperationsScreen(
+          clinic: clinic,
+          services: widget.data.services,
+          users: widget.data.users,
+          repository: widget.repository,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openDoctorOperations(AdminDoctor doctor) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -540,6 +554,7 @@ class _ManagementPageState extends State<_ManagementPage> {
                           (clinic) => _ClinicAdminCard(
                             clinic: clinic,
                             onEdit: () => _openClinic(clinic),
+                            onSetup: () => _openClinicOperations(clinic),
                             onStatusChanged: (active) =>
                                 _toggleClinic(clinic, active),
                           ),
@@ -633,11 +648,13 @@ class _ClinicAdminCard extends StatelessWidget {
   const _ClinicAdminCard({
     required this.clinic,
     required this.onEdit,
+    required this.onSetup,
     required this.onStatusChanged,
   });
 
   final AdminClinic clinic;
   final VoidCallback onEdit;
+  final VoidCallback onSetup;
   final ValueChanged<bool> onStatusChanged;
 
   @override
@@ -674,7 +691,29 @@ class _ClinicAdminCard extends StatelessWidget {
           ),
         ),
         Switch.adaptive(value: clinic.isActive, onChanged: onStatusChanged),
-        IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+        PopupMenuButton<String>(
+          key: Key('admin-clinic-setup-${clinic.id}'),
+          tooltip: 'Clinic actions',
+          onSelected: (value) => value == 'setup' ? onSetup() : onEdit(),
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'setup',
+              child: ListTile(
+                leading: Icon(Icons.settings_outlined),
+                title: Text('Manage clinic'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit_outlined),
+                title: Text('Edit details'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
       ],
     ),
   );
