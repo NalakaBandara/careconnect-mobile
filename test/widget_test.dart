@@ -1182,10 +1182,30 @@ void main() {
     expect(find.text('12'), findsOneWidget);
     expect(find.text('Pending visits'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('admin-nav-users')));
+    await tester.tap(find.byKey(const Key('admin-nav-manage')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('admin-users')), findsOneWidget);
+    expect(find.byKey(const Key('admin-management')), findsOneWidget);
     expect(find.text('Amara Silva'), findsOneWidget);
+
+    await tester.tap(find.text('Doctors'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 doctor profiles'), findsOneWidget);
+    expect(find.text('Dr. Maya Fernando'), findsOneWidget);
+
+    await tester.tap(find.text('Clinics'));
+    await tester.pumpAndSettle();
+    expect(find.text('Northgate Medical Centre'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('admin-management-add')));
+    await tester.pumpAndSettle();
+    expect(find.text('Add a care location'), findsOneWidget);
+    final saveClinic = find.byKey(const Key('admin-save-clinic'));
+    await tester.ensureVisible(saveClinic);
+    await tester.pumpAndSettle();
+    await tester.tap(saveClinic);
+    await tester.pump();
+    expect(find.text('Clinic name is required'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('admin-nav-visits')));
     await tester.pumpAndSettle();
@@ -1195,6 +1215,22 @@ void main() {
 }
 
 class _FakeAdminDataSource implements AdminDataSource {
+  int clinicUpdates = 0;
+
+  @override
+  Future<void> createClinic(AdminClinic clinic) async {}
+
+  @override
+  Future<void> createDoctor({
+    required String userId,
+    String? licenseNumber,
+    String? bio,
+    int? yearsOfExperience,
+    required bool isVerified,
+    required List<String> specialtyIds,
+    required List<String> clinicIds,
+  }) async {}
+
   @override
   Future<AdminDashboardSnapshot> getDashboard() async =>
       const AdminDashboardSnapshot(
@@ -1209,10 +1245,43 @@ class _FakeAdminDataSource implements AdminDataSource {
           ),
         ],
         totalUsers: 12,
-        doctorCount: 4,
-        clinicCount: 3,
+        doctors: [
+          AdminDoctor(
+            id: '3',
+            userId: '9',
+            firstName: 'Maya',
+            lastName: 'Fernando',
+            isVerified: true,
+            specialties: [],
+            clinics: [],
+          ),
+        ],
+        clinics: [
+          AdminClinic(
+            id: '1',
+            name: 'Northgate Medical Centre',
+            addressLine1: '12 Main Street',
+            city: 'Colombo',
+            country: 'Sri Lanka',
+            status: 'ACTIVE',
+          ),
+        ],
+        specialties: [],
         appointments: AppointmentsPreviewData.appointments,
       );
+
+  @override
+  Future<void> updateClinic(AdminClinic clinic, {String? status}) async {
+    clinicUpdates++;
+  }
+
+  @override
+  Future<void> updateDoctor({
+    required String id,
+    String? bio,
+    int? yearsOfExperience,
+    required bool isVerified,
+  }) async {}
 }
 
 class _FakeFindCareRepository implements FindCareDataSource {

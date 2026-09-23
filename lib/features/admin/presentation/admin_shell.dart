@@ -3,6 +3,7 @@ import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_management_forms.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -96,7 +97,11 @@ class _AdminShellState extends State<AdminShell> {
                   data: data,
                   onRefresh: _refresh,
                 ),
-                _UsersPage(data: data, onRefresh: _refresh),
+                _ManagementPage(
+                  data: data,
+                  repository: _repository,
+                  onRefresh: _refresh,
+                ),
                 _AppointmentsPage(data: data, onRefresh: _refresh),
                 _AdminAccountPage(user: widget.user, onLogout: widget.onLogout),
               ],
@@ -122,10 +127,10 @@ class _AdminShellState extends State<AdminShell> {
             label: 'Overview',
           ),
           NavigationDestination(
-            key: Key('admin-nav-users'),
+            key: Key('admin-nav-manage'),
             icon: Icon(Icons.people_outline_rounded),
             selectedIcon: Icon(Icons.people_rounded),
-            label: 'Users',
+            label: 'Manage',
           ),
           NavigationDestination(
             key: Key('admin-nav-visits'),
@@ -335,35 +340,284 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _UsersPage extends StatelessWidget {
-  const _UsersPage({required this.data, required this.onRefresh});
+enum _ManagementSection { users, doctors, clinics }
+
+class _ManagementPage extends StatefulWidget {
+  const _ManagementPage({
+    required this.data,
+    required this.repository,
+    required this.onRefresh,
+  });
 
   final AdminDashboardSnapshot data;
+  final AdminDataSource repository;
   final Future<void> Function() onRefresh;
 
   @override
+  State<_ManagementPage> createState() => _ManagementPageState();
+}
+
+class _ManagementPageState extends State<_ManagementPage> {
+  _ManagementSection _section = _ManagementSection.users;
+
+  Future<void> _openDoctor([AdminDoctor? doctor]) async {
+    final existingUserIds = widget.data.doctors
+        .map((item) => item.userId)
+        .toSet();
+    final users = doctor == null
+        ? widget.data.users
+              .where((user) => !existingUserIds.contains(user.id))
+              .toList(growable: false)
+        : widget.data.users;
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AdminDoctorFormScreen(
+          repository: widget.repository,
+          users: users,
+          clinics: widget.data.clinics,
+          specialties: widget.data.specialties,
+          doctor: doctor,
+        ),
+      ),
+    );
+    if (changed == true) await widget.onRefresh();
+  }
+
+  Future<void> _openClinic([AdminClinic? clinic]) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AdminClinicFormScreen(
+          repository: widget.repository,
+          clinic: clinic,
+        ),
+      ),
+    );
+    if (changed == true) await widget.onRefresh();
+  }
+
+  Future<void> _toggleClinic(AdminClinic clinic, bool active) async {
+    try {
+      await widget.repository.updateClinic(
+        clinic,
+        status: active ? 'ACTIVE' : 'INACTIVE',
+      );
+      await widget.onRefresh();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update the clinic status.')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final canAdd = _section != _ManagementSection.users;
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       child: ListView(
-        key: const Key('admin-users'),
+        key: const Key('admin-management'),
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
         children: [
-          const _AdminHeader(title: 'Users', subtitle: 'Accounts and access'),
-          const SizedBox(height: 26),
-          Text(
-            '${data.totalUsers} registered users',
-            style: Theme.of(context).textTheme.titleLarge,
+          const _AdminHeader(
+            title: 'Management',
+            subtitle: 'People and care locations',
+          ),
+          const SizedBox(height: 22),
+          SegmentedButton<_ManagementSection>(
+            segments: const [
+              ButtonSegment(
+                value: _ManagementSection.users,
+                label: Text('Users'),
+              ),
+              ButtonSegment(
+                value: _ManagementSection.doctors,
+                label: Text('Doctors'),
+              ),
+              ButtonSegment(
+                value: _ManagementSection.clinics,
+                label: Text('Clinics'),
+              ),
+            ],
+            selected: {_section},
+            showSelectedIcon: false,
+            onSelectionChanged: (value) =>
+                setState(() => _section = value.single),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(switch (_section) {
+                  _ManagementSection.users =>
+                    '${widget.data.totalUsers} registered users',
+                  _ManagementSection.doctors =>
+                    '${widget.data.doctorCount} doctor profiles',
+                  _ManagementSection.clinics =>
+                    '${widget.data.clinicCount} care locations',
+                }, style: Theme.of(context).textTheme.titleLarge),
+              ),
+              if (canAdd)
+                IconButton.filled(
+                  key: const Key('admin-management-add'),
+                  tooltip: _section == _ManagementSection.doctors
+                      ? 'Add doctor'
+                      : 'Add clinic',
+                  onPressed: () => _section == _ManagementSection.doctors
+                      ? _openDoctor()
+                      : _openClinic(),
+                  icon: const Icon(Icons.add_rounded),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
-          if (data.users.isEmpty)
-            const _EmptyCard(message: 'No users found.')
-          else
-            ...data.users.map(_UserCard.new),
+          ...switch (_section) {
+            _ManagementSection.users =>
+              widget.data.users.isEmpty
+                  ? const [_EmptyCard(message: 'No users found.')]
+                  : widget.data.users.map(_UserCard.new).toList(),
+            _ManagementSection.doctors =>
+              widget.data.doctors.isEmpty
+                  ? const [_EmptyCard(message: 'No doctor profiles found.')]
+                  : widget.data.doctors
+                        .map(
+                          (doctor) => _DoctorAdminCard(
+                            doctor: doctor,
+                            onEdit: () => _openDoctor(doctor),
+                          ),
+                        )
+                        .toList(),
+            _ManagementSection.clinics =>
+              widget.data.clinics.isEmpty
+                  ? const [_EmptyCard(message: 'No clinics found.')]
+                  : widget.data.clinics
+                        .map(
+                          (clinic) => _ClinicAdminCard(
+                            clinic: clinic,
+                            onEdit: () => _openClinic(clinic),
+                            onStatusChanged: (active) =>
+                                _toggleClinic(clinic, active),
+                          ),
+                        )
+                        .toList(),
+          },
         ],
       ),
     );
   }
+}
+
+class _DoctorAdminCard extends StatelessWidget {
+  const _DoctorAdminCard({required this.doctor, required this.onEdit});
+
+  final AdminDoctor doctor;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: doctor.isVerified
+              ? AppColors.mintSoft
+              : AppColors.blueSoft,
+          foregroundColor: AppColors.primary,
+          child: Icon(
+            doctor.isVerified
+                ? Icons.verified_rounded
+                : Icons.medical_services_outlined,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                doctor.displayName,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                doctor.specialties.isEmpty
+                    ? 'No specialty assigned'
+                    : doctor.specialties.map((item) => item.name).join(' · '),
+                style: const TextStyle(color: AppColors.primary, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                doctor.clinics.isEmpty
+                    ? 'No clinic assigned'
+                    : doctor.clinics.map((item) => item.name).join(', '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+      ],
+    ),
+  );
+}
+
+class _ClinicAdminCard extends StatelessWidget {
+  const _ClinicAdminCard({
+    required this.clinic,
+    required this.onEdit,
+    required this.onStatusChanged,
+  });
+
+  final AdminClinic clinic;
+  final VoidCallback onEdit;
+  final ValueChanged<bool> onStatusChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Row(
+      children: [
+        const CircleAvatar(
+          backgroundColor: AppColors.lilacSoft,
+          foregroundColor: Color(0xFF7654B8),
+          child: Icon(Icons.local_hospital_outlined),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                clinic.name,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${clinic.addressLine1}, ${clinic.city}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        Switch.adaptive(value: clinic.isActive, onChanged: onStatusChanged),
+        IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+      ],
+    ),
+  );
 }
 
 class _UserCard extends StatelessWidget {
