@@ -47,6 +47,16 @@ abstract interface class AdminDataSource {
     String doctorId,
     AdminDoctorSchedule schedule,
   );
+
+  Future<List<AdminAppointmentStatusEntry>> getAppointmentStatusHistory(
+    String appointmentId,
+  );
+
+  Future<CareAppointment> updateAppointmentStatus(
+    String appointmentId,
+    AppointmentStatus status, {
+    String? reason,
+  });
 }
 
 class AdminRepository implements AdminDataSource {
@@ -201,6 +211,34 @@ class AdminRepository implements AdminDataSource {
       ApiEndpoints.doctorSchedule(doctorId, schedule.id),
       body: schedule.toRequestJson(),
     );
+  }
+
+  @override
+  Future<List<AdminAppointmentStatusEntry>> getAppointmentStatusHistory(
+    String appointmentId,
+  ) async {
+    final response = await _client.get(
+      ApiEndpoints.appointmentStatusHistory(appointmentId),
+    );
+    return _dataList(
+      _objectMap(response),
+    ).map(AdminAppointmentStatusEntry.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<CareAppointment> updateAppointmentStatus(
+    String appointmentId,
+    AppointmentStatus status, {
+    String? reason,
+  }) async {
+    final response = await _client.patch(
+      ApiEndpoints.appointmentStatus(appointmentId),
+      body: {
+        'status': status.apiValue,
+        if (reason?.trim().isNotEmpty ?? false) 'reason': reason!.trim(),
+      },
+    );
+    return CareAppointment.fromJson(response as Map<String, dynamic>);
   }
 
   static Map<String, dynamic> _objectMap(Object? value) {

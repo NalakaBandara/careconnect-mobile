@@ -1217,11 +1217,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-appointments')), findsOneWidget);
     expect(find.text('Dr. Maya Fernando'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('admin-appointment-4821')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-appointment-detail')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('admin-status-COMPLETED')));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm change'), findsOneWidget);
+    await tester.tap(find.text('Confirm change'));
+    await tester.pumpAndSettle();
+    expect(find.text('Completed'), findsWidgets);
   });
 }
 
 class _FakeAdminDataSource implements AdminDataSource {
   int clinicUpdates = 0;
+  AppointmentStatus? updatedAppointmentStatus;
 
   @override
   Future<void> createClinic(AdminClinic clinic) async {}
@@ -1305,6 +1315,19 @@ class _FakeAdminDataSource implements AdminDataSource {
       ];
 
   @override
+  Future<List<AdminAppointmentStatusEntry>> getAppointmentStatusHistory(
+    String appointmentId,
+  ) async => const [
+    AdminAppointmentStatusEntry(
+      id: '1',
+      appointmentId: '4821',
+      status: AppointmentStatus.confirmed,
+      changedByUserId: '1',
+      createdAt: null,
+    ),
+  ];
+
+  @override
   Future<void> removeDoctorClinic(String doctorId, String clinicId) async {}
 
   @override
@@ -1331,6 +1354,18 @@ class _FakeAdminDataSource implements AdminDataSource {
     String doctorId,
     AdminDoctorSchedule schedule,
   ) async {}
+
+  @override
+  Future<CareAppointment> updateAppointmentStatus(
+    String appointmentId,
+    AppointmentStatus status, {
+    String? reason,
+  }) async {
+    updatedAppointmentStatus = status;
+    return AppointmentsPreviewData.appointments
+        .firstWhere((appointment) => appointment.id == appointmentId)
+        .copyWith(status: status, reason: reason);
+  }
 }
 
 class _FakeFindCareRepository implements FindCareDataSource {

@@ -5,6 +5,7 @@ import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_management_forms.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_operations_screen.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -103,7 +104,11 @@ class _AdminShellState extends State<AdminShell> {
                   repository: _repository,
                   onRefresh: _refresh,
                 ),
-                _AppointmentsPage(data: data, onRefresh: _refresh),
+                _AppointmentsPage(
+                  data: data,
+                  repository: _repository,
+                  onRefresh: _refresh,
+                ),
                 _AdminAccountPage(user: widget.user, onLogout: widget.onLogout),
               ],
             );
@@ -712,16 +717,62 @@ class _UserCard extends StatelessWidget {
   }
 }
 
-class _AppointmentsPage extends StatelessWidget {
-  const _AppointmentsPage({required this.data, required this.onRefresh});
+class _AppointmentsPage extends StatefulWidget {
+  const _AppointmentsPage({
+    required this.data,
+    required this.repository,
+    required this.onRefresh,
+  });
 
   final AdminDashboardSnapshot data;
+  final AdminDataSource repository;
   final Future<void> Function() onRefresh;
 
   @override
+  State<_AppointmentsPage> createState() => _AppointmentsPageState();
+}
+
+class _AppointmentsPageState extends State<_AppointmentsPage> {
+  final _searchController = TextEditingController();
+  AppointmentStatus? _status;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<CareAppointment> get _filteredAppointments {
+    final query = _searchController.text.trim().toLowerCase();
+    return widget.data.appointments
+        .where((appointment) {
+          if (_status != null && appointment.status != _status) return false;
+          if (query.isEmpty) return true;
+          return appointment.reference.toLowerCase().contains(query) ||
+              appointment.patientId.toLowerCase().contains(query) ||
+              appointment.doctor.displayName.toLowerCase().contains(query) ||
+              appointment.clinic.name.toLowerCase().contains(query);
+        })
+        .toList(growable: false);
+  }
+
+  Future<void> _openAppointment(CareAppointment appointment) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AdminAppointmentScreen(
+          appointment: appointment,
+          repository: widget.repository,
+          onChanged: widget.onRefresh,
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final appointments = _filteredAppointments;
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       child: ListView(
         key: const Key('admin-appointments'),
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
@@ -731,69 +782,151 @@ class _AppointmentsPage extends StatelessWidget {
             subtitle: 'Network-wide visits',
           ),
           const SizedBox(height: 26),
+          TextField(
+            key: const Key('admin-appointment-search'),
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Reference, patient, doctor or clinic',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(17),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _AppointmentFilterChip(
+                  label: 'All',
+                  selected: _status == null,
+                  onSelected: () => setState(() => _status = null),
+                ),
+                for (final status in const [
+                  AppointmentStatus.pending,
+                  AppointmentStatus.confirmed,
+                  AppointmentStatus.completed,
+                  AppointmentStatus.cancelled,
+                  AppointmentStatus.noShow,
+                ]) ...[
+                  const SizedBox(width: 8),
+                  _AppointmentFilterChip(
+                    label: status.label,
+                    selected: _status == status,
+                    onSelected: () => setState(() => _status = status),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           Text(
-            '${data.appointments.length} appointments',
+            '${appointments.length} of ${widget.data.appointments.length} appointments',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
-          if (data.appointments.isEmpty)
-            const _EmptyCard(message: 'No appointments found.')
+          if (appointments.isEmpty)
+            const _EmptyCard(message: 'No appointments match these filters.')
           else
-            ...data.appointments.map(_AppointmentCard.new),
+            ...appointments.map(
+              (appointment) => _AppointmentCard(
+                appointment,
+                onTap: () => _openAppointment(appointment),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
+class _AppointmentFilterChip extends StatelessWidget {
+  const _AppointmentFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) => ChoiceChip(
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onSelected(),
+  );
+}
+
 class _AppointmentCard extends StatelessWidget {
-  const _AppointmentCard(this.appointment);
+  const _AppointmentCard(this.appointment, {this.onTap});
 
   final CareAppointment appointment;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  appointment.doctor.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+    return InkWell(
+      key: Key('admin-appointment-${appointment.id}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    appointment.doctor.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
-              ),
-              _StatusChip(status: appointment.status),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            appointment.service.name,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
+                _StatusChip(status: appointment.status),
+              ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '${appointment.appointmentDate}  ·  ${appointment.startTime}  ·  ${appointment.clinic.name}',
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Patient #${appointment.patientId}  ·  ${appointment.reference}',
-            style: const TextStyle(color: AppColors.muted, fontSize: 11),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              appointment.service.name,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${appointment.appointmentDate}  ·  ${appointment.startTime}  ·  ${appointment.clinic.name}',
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Patient #${appointment.patientId}  ·  ${appointment.reference}',
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
       ),
     );
   }
