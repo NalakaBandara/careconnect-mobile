@@ -1186,6 +1186,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-management')), findsOneWidget);
     expect(find.text('Amara Silva'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('admin-user-8')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-user-access')), findsOneWidget);
+    expect(find.text('Account status: Active'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('admin-assign-role-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Assign role').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Assigned'), findsWidgets);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Doctors'));
     await tester.pumpAndSettle();
@@ -1226,12 +1237,24 @@ void main() {
     await tester.tap(find.text('Confirm change'));
     await tester.pumpAndSettle();
     expect(find.text('Completed'), findsWidgets);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin-nav-account')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin-security-tile')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-role-catalog')), findsOneWidget);
+    await tester.tap(find.text('Audit activity'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-audit-logs')), findsOneWidget);
+    expect(find.text('Appointment Updated'), findsOneWidget);
   });
 }
 
 class _FakeAdminDataSource implements AdminDataSource {
   int clinicUpdates = 0;
   AppointmentStatus? updatedAppointmentStatus;
+  String? assignedRoleId;
 
   @override
   Future<void> createClinic(AdminClinic clinic) async {}
@@ -1252,6 +1275,11 @@ class _FakeAdminDataSource implements AdminDataSource {
 
   @override
   Future<void> addDoctorSpecialty(String doctorId, String specialtyId) async {}
+
+  @override
+  Future<void> assignUserRole(String userId, String roleId) async {
+    assignedRoleId = roleId;
+  }
 
   @override
   Future<void> createDoctorSchedule(
@@ -1325,6 +1353,27 @@ class _FakeAdminDataSource implements AdminDataSource {
       changedByUserId: '1',
       createdAt: null,
     ),
+  ];
+
+  @override
+  Future<List<AdminAuditLog>> getAuditLogs({
+    String? userId,
+    String? entityType,
+  }) async => const [
+    AdminAuditLog(
+      id: '1',
+      userId: '1',
+      action: 'APPOINTMENT_UPDATED',
+      entityType: 'APPOINTMENT',
+      entityId: '4821',
+      createdAt: null,
+    ),
+  ];
+
+  @override
+  Future<List<AdminRole>> getRoles() async => const [
+    AdminRole(id: '1', name: 'PATIENT', description: 'Patient access'),
+    AdminRole(id: '2', name: 'ADMIN', description: 'Administrator access'),
   ];
 
   @override

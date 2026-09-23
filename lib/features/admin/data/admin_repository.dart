@@ -57,6 +57,15 @@ abstract interface class AdminDataSource {
     AppointmentStatus status, {
     String? reason,
   });
+
+  Future<List<AdminRole>> getRoles();
+
+  Future<void> assignUserRole(String userId, String roleId);
+
+  Future<List<AdminAuditLog>> getAuditLogs({
+    String? userId,
+    String? entityType,
+  });
 }
 
 class AdminRepository implements AdminDataSource {
@@ -239,6 +248,40 @@ class AdminRepository implements AdminDataSource {
       },
     );
     return CareAppointment.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<AdminRole>> getRoles() async {
+    final response = await _client.get(ApiEndpoints.roles);
+    return _dataList(
+      _objectMap(response),
+    ).map(AdminRole.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<void> assignUserRole(String userId, String roleId) async {
+    await _client.post(
+      ApiEndpoints.userRoles,
+      body: {'userId': userId, 'roleId': roleId},
+    );
+  }
+
+  @override
+  Future<List<AdminAuditLog>> getAuditLogs({
+    String? userId,
+    String? entityType,
+  }) async {
+    final response = await _client.get(
+      ApiEndpoints.auditLogs,
+      queryParameters: {
+        if (userId?.trim().isNotEmpty ?? false) 'userId': userId!.trim(),
+        if (entityType?.trim().isNotEmpty ?? false)
+          'entityType': entityType!.trim(),
+      },
+    );
+    return _dataList(
+      _objectMap(response),
+    ).map(AdminAuditLog.fromJson).toList(growable: false);
   }
 
   static Map<String, dynamic> _objectMap(Object? value) {

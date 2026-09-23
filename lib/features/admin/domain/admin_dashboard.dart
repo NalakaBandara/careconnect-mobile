@@ -239,3 +239,44 @@ class AdminAppointmentStatusEntry {
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
       );
 }
+
+class AdminRole {
+  const AdminRole({required this.id, required this.name, this.description});
+
+  final String id;
+  final String name;
+  final String? description;
+
+  factory AdminRole.fromJson(Map<String, dynamic> json) => AdminRole(
+    id: json['id'].toString(),
+    name: json['name'] as String? ?? 'UNKNOWN',
+    description: json['description'] as String?,
+  );
+}
+
+class AdminAuditLog {
+  const AdminAuditLog({
+    required this.id,
+    required this.action,
+    required this.entityType,
+    required this.createdAt,
+    this.userId,
+    this.entityId,
+  });
+
+  final String id;
+  final String? userId;
+  final String action;
+  final String entityType;
+  final String? entityId;
+  final DateTime? createdAt;
+
+  factory AdminAuditLog.fromJson(Map<String, dynamic> json) => AdminAuditLog(
+    id: json['id'].toString(),
+    userId: json['userId']?.toString(),
+    action: json['action'] as String? ?? 'UNKNOWN_ACTION',
+    entityType: json['entityType'] as String? ?? 'UNKNOWN_ENTITY',
+    entityId: json['entityId']?.toString(),
+    createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+  );
+}

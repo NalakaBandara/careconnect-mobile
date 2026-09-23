@@ -4,6 +4,7 @@ import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_management_forms.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_security_screens.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_operations_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
@@ -109,7 +110,11 @@ class _AdminShellState extends State<AdminShell> {
                   repository: _repository,
                   onRefresh: _refresh,
                 ),
-                _AdminAccountPage(user: widget.user, onLogout: widget.onLogout),
+                _AdminAccountPage(
+                  user: widget.user,
+                  repository: _repository,
+                  onLogout: widget.onLogout,
+                ),
               ],
             );
           },
@@ -415,6 +420,18 @@ class _ManagementPageState extends State<_ManagementPage> {
     );
   }
 
+  Future<void> _openUserAccess(AdminUser user) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AdminUserAccessScreen(
+          user: user,
+          repository: widget.repository,
+          onChanged: widget.onRefresh,
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleClinic(AdminClinic clinic, bool active) async {
     try {
       await widget.repository.updateClinic(
@@ -495,7 +512,14 @@ class _ManagementPageState extends State<_ManagementPage> {
             _ManagementSection.users =>
               widget.data.users.isEmpty
                   ? const [_EmptyCard(message: 'No users found.')]
-                  : widget.data.users.map(_UserCard.new).toList(),
+                  : widget.data.users
+                        .map(
+                          (user) => _UserCard(
+                            user,
+                            onTap: () => _openUserAccess(user),
+                          ),
+                        )
+                        .toList(),
             _ManagementSection.doctors =>
               widget.data.doctors.isEmpty
                   ? const [_EmptyCard(message: 'No doctor profiles found.')]
@@ -657,61 +681,72 @@ class _ClinicAdminCard extends StatelessWidget {
 }
 
 class _UserCard extends StatelessWidget {
-  const _UserCard(this.user);
+  const _UserCard(this.user, {this.onTap});
 
   final AdminUser user;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final initial = user.displayName.characters.first.toUpperCase();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppColors.mintSoft,
-            foregroundColor: AppColors.primary,
-            child: Text(
-              initial,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+    return InkWell(
+      key: Key('admin-user-${user.id}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: AppColors.mintSoft,
+              foregroundColor: AppColors.primary,
+              child: Text(
+                initial,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  user.email,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  user.roles.isEmpty
-                      ? 'No role assigned'
-                      : user.roles.join(' · '),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    user.email,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    user.roles.isEmpty
+                        ? 'No role assigned'
+                        : user.roles.join(' · '),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _StatusDot(active: user.status.toUpperCase() == 'ACTIVE'),
-        ],
+            _StatusDot(active: user.status.toUpperCase() == 'ACTIVE'),
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
       ),
     );
   }
@@ -978,9 +1013,14 @@ class _StatusDot extends StatelessWidget {
 }
 
 class _AdminAccountPage extends StatelessWidget {
-  const _AdminAccountPage({required this.user, required this.onLogout});
+  const _AdminAccountPage({
+    required this.user,
+    required this.repository,
+    required this.onLogout,
+  });
 
   final CurrentUser user;
+  final AdminDataSource repository;
   final Future<void> Function()? onLogout;
 
   @override
@@ -1036,9 +1076,16 @@ class _AdminAccountPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        const _EmptyCard(
-          message:
-              'Doctor, clinic, schedule, role, and audit management will be added as separate secured modules.',
+        _AdminMenuTile(
+          key: const Key('admin-security-tile'),
+          icon: Icons.policy_outlined,
+          title: 'Roles and audit',
+          subtitle: 'Review role definitions and recent security activity',
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => AdminSecurityScreen(repository: repository),
+            ),
+          ),
         ),
         const SizedBox(height: 20),
         OutlinedButton.icon(
@@ -1050,6 +1097,45 @@ class _AdminAccountPage extends StatelessWidget {
       ],
     );
   }
+}
+
+class _AdminMenuTile extends StatelessWidget {
+  const _AdminMenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: const BorderSide(color: AppColors.border),
+    ),
+    child: ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      leading: Container(
+        padding: const EdgeInsets.all(9),
+        decoration: BoxDecoration(
+          color: AppColors.lilacSoft,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: const Color(0xFF7654B8)),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right_rounded),
+    ),
+  );
 }
 
 class _EmptyCard extends StatelessWidget {
