@@ -15,12 +15,14 @@ class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({
     this.authService,
     this.initialMessage,
+    this.initialSignUp,
     this.homeBuilder,
     super.key,
   });
 
   final AuthDataSource? authService;
   final String? initialMessage;
+  final bool? initialSignUp;
   final AuthenticatedHomeBuilder? homeBuilder;
 
   @override
@@ -30,6 +32,7 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   late final AuthDataSource _authService;
   bool _busy = false;
+  bool _openedInitialAuth = false;
 
   @override
   void initState() {
@@ -48,14 +51,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Future<void> _restoreSession() async {
+    var restored = false;
     setState(() => _busy = true);
     try {
       final session = await _authService.restoreSession();
-      if (session != null && mounted) _openHome(session.user);
+      if (session != null && mounted) {
+        restored = true;
+        _openHome(session.user);
+      }
     } catch (_) {
       // A failed silent restore should leave the user on the sign-in screen.
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+    if (!restored && mounted && widget.initialSignUp != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _openedInitialAuth) return;
+        _openedInitialAuth = true;
+        _authenticate(signUp: widget.initialSignUp!);
+      });
     }
   }
 
@@ -103,17 +117,26 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   void _openGuestExperience() {
+    final authService = _authService;
+    final homeBuilder = widget.homeBuilder;
+
+    void openAuth(BuildContext guestContext, {required bool signUp}) {
+      Navigator.of(guestContext).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => WelcomeScreen(
+            authService: authService,
+            initialSignUp: signUp,
+            homeBuilder: homeBuilder,
+          ),
+        ),
+      );
+    }
+
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (guestContext) => MainShell(
-          onSignInRequired: () => Navigator.of(guestContext).pushReplacement(
-            MaterialPageRoute<void>(
-              builder: (_) => WelcomeScreen(
-                authService: _authService,
-                homeBuilder: widget.homeBuilder,
-              ),
-            ),
-          ),
+          onSignInRequired: () => openAuth(guestContext, signUp: false),
+          onCreateAccountRequired: () => openAuth(guestContext, signUp: true),
         ),
       ),
     );

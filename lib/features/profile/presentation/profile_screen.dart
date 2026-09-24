@@ -11,17 +11,23 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
     super.key,
     this.user,
+    this.isGuest = false,
     this.onLogout,
     this.onNotifications,
     this.repository,
     this.onUserChanged,
+    this.onSignIn,
+    this.onCreateAccount,
   });
 
   final CurrentUser? user;
+  final bool isGuest;
   final Future<void> Function()? onLogout;
   final VoidCallback? onNotifications;
   final UserDataSource? repository;
   final ValueChanged<CurrentUser>? onUserChanged;
+  final VoidCallback? onSignIn;
+  final VoidCallback? onCreateAccount;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -89,129 +95,263 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ).push(MaterialPageRoute<void>(builder: (_) => screen));
 
   @override
+  Widget build(BuildContext context) {
+    if (widget.isGuest) {
+      return _GuestProfileView(
+        onSignIn: widget.onSignIn,
+        onCreateAccount: widget.onCreateAccount,
+      );
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _isPreview
+              ? () async =>
+                    Future<void>.delayed(const Duration(milliseconds: 250))
+              : _refreshProfile,
+          child: ListView(
+            key: const Key('profile-screen'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(22, 28, 22, 118),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Your profile',
+                      key: const Key('profile-title'),
+                      style: Theme.of(context).textTheme.displaySmall,
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    key: const Key('profile-notifications-button'),
+                    tooltip: 'Notifications',
+                    onPressed:
+                        widget.onNotifications ??
+                        () => _open(const NotificationsScreen()),
+                    icon: const Icon(Icons.notifications_none_rounded),
+                  ),
+                ],
+              ),
+              if (_isLoading) ...[
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(
+                  key: Key('profile-loading'),
+                  minHeight: 3,
+                  borderRadius: BorderRadius.all(Radius.circular(99)),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                _ProfileLoadError(message: _error!, onRetry: _refreshProfile),
+              ],
+              const SizedBox(height: 22),
+              _ProfileHero(
+                user: _user,
+                isPreview: _isPreview,
+                onEdit: _editProfile,
+              ),
+              const SizedBox(height: 28),
+              const _SectionLabel('ACCOUNT'),
+              const SizedBox(height: 10),
+              _ProfileTile(
+                key: const Key('personal-details-tile'),
+                icon: Icons.person_outline_rounded,
+                iconColor: AppColors.primary,
+                iconBackground: AppColors.mintSoft,
+                title: 'Personal details',
+                caption: 'Name, phone and date of birth',
+                onTap: _editProfile,
+              ),
+              const SizedBox(height: 10),
+              _ProfileTile(
+                key: const Key('security-tile'),
+                icon: Icons.shield_outlined,
+                iconColor: const Color(0xFF5276D8),
+                iconBackground: AppColors.blueSoft,
+                title: 'Security',
+                caption: 'Sign-in and account protection',
+                onTap: () => _open(const SecurityScreen()),
+              ),
+              const SizedBox(height: 10),
+              _ProfileTile(
+                key: const Key('notification-preferences-tile'),
+                icon: Icons.notifications_none_rounded,
+                iconColor: const Color(0xFF9A6810),
+                iconBackground: const Color(0xFFFFF1D2),
+                title: 'Notifications',
+                caption: 'Appointment reminders and updates',
+                onTap: () => _open(const NotificationPreferencesScreen()),
+              ),
+              const SizedBox(height: 26),
+              const _SectionLabel('SUPPORT & INFORMATION'),
+              const SizedBox(height: 10),
+              _ProfileTile(
+                key: const Key('support-tile'),
+                icon: Icons.favorite_border_rounded,
+                iconColor: const Color(0xFF7957C8),
+                iconBackground: AppColors.lilacSoft,
+                title: 'Help & support',
+                caption: 'FAQs and contact information',
+                onTap: () => _open(const SupportScreen()),
+              ),
+              const SizedBox(height: 10),
+              _ProfileTile(
+                key: const Key('privacy-tile'),
+                icon: Icons.privacy_tip_outlined,
+                iconColor: AppColors.primary,
+                iconBackground: AppColors.mintSoft,
+                title: 'Privacy & legal',
+                caption: 'How CareConnect handles your information',
+                onTap: () => _open(const PrivacyScreen()),
+              ),
+              if (widget.onLogout != null) ...[
+                const SizedBox(height: 26),
+                OutlinedButton.icon(
+                  key: const Key('profile-sign-out-button'),
+                  onPressed: widget.onLogout,
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Sign out'),
+                ),
+              ],
+              const SizedBox(height: 20),
+              const Center(
+                child: Text(
+                  'CareConnect · Personal healthcare companion',
+                  style: TextStyle(color: AppColors.muted, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestProfileView extends StatelessWidget {
+  const _GuestProfileView({
+    required this.onSignIn,
+    required this.onCreateAccount,
+  });
+
+  final VoidCallback? onSignIn;
+  final VoidCallback? onCreateAccount;
+
+  @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
       bottom: false,
-      child: RefreshIndicator(
-        onRefresh: _isPreview
-            ? () async =>
-                  Future<void>.delayed(const Duration(milliseconds: 250))
-            : _refreshProfile,
-        child: ListView(
-          key: const Key('profile-screen'),
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(22, 28, 22, 118),
-          children: [
-            Row(
+      child: ListView(
+        key: const Key('guest-profile-screen'),
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 118),
+        children: [
+          Text('Profile', style: Theme.of(context).textTheme.displaySmall),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primaryDark, AppColors.primary],
+              ),
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    'Your profile',
-                    key: const Key('profile-title'),
-                    style: Theme.of(context).textTheme.displaySmall,
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.primary,
+                  child: Icon(Icons.person_outline_rounded, size: 30),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'You’re browsing as a guest',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                IconButton.filledTonal(
-                  key: const Key('profile-notifications-button'),
-                  tooltip: 'Notifications',
-                  onPressed:
-                      widget.onNotifications ??
-                      () => _open(const NotificationsScreen()),
-                  icon: const Icon(Icons.notifications_none_rounded),
+                SizedBox(height: 8),
+                Text(
+                  'Sign in or create an account to book care and manage your appointments.',
+                  style: TextStyle(color: Color(0xFFD8F3EF), height: 1.45),
                 ),
               ],
             ),
-            if (_isLoading) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(
-                key: Key('profile-loading'),
-                minHeight: 3,
-                borderRadius: BorderRadius.all(Radius.circular(99)),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              _ProfileLoadError(message: _error!, onRetry: _refreshProfile),
-            ],
-            const SizedBox(height: 22),
-            _ProfileHero(
-              user: _user,
-              isPreview: _isPreview,
-              onEdit: _editProfile,
-            ),
-            const SizedBox(height: 28),
-            const _SectionLabel('ACCOUNT'),
-            const SizedBox(height: 10),
-            _ProfileTile(
-              key: const Key('personal-details-tile'),
-              icon: Icons.person_outline_rounded,
-              iconColor: AppColors.primary,
-              iconBackground: AppColors.mintSoft,
-              title: 'Personal details',
-              caption: 'Name, phone and date of birth',
-              onTap: _editProfile,
-            ),
-            const SizedBox(height: 10),
-            _ProfileTile(
-              key: const Key('security-tile'),
-              icon: Icons.shield_outlined,
-              iconColor: const Color(0xFF5276D8),
-              iconBackground: AppColors.blueSoft,
-              title: 'Security',
-              caption: 'Sign-in and account protection',
-              onTap: () => _open(const SecurityScreen()),
-            ),
-            const SizedBox(height: 10),
-            _ProfileTile(
-              key: const Key('notification-preferences-tile'),
-              icon: Icons.notifications_none_rounded,
-              iconColor: const Color(0xFF9A6810),
-              iconBackground: const Color(0xFFFFF1D2),
-              title: 'Notifications',
-              caption: 'Appointment reminders and updates',
-              onTap: () => _open(const NotificationPreferencesScreen()),
-            ),
-            const SizedBox(height: 26),
-            const _SectionLabel('SUPPORT & INFORMATION'),
-            const SizedBox(height: 10),
-            _ProfileTile(
-              key: const Key('support-tile'),
-              icon: Icons.favorite_border_rounded,
-              iconColor: const Color(0xFF7957C8),
-              iconBackground: AppColors.lilacSoft,
-              title: 'Help & support',
-              caption: 'FAQs and contact information',
-              onTap: () => _open(const SupportScreen()),
-            ),
-            const SizedBox(height: 10),
-            _ProfileTile(
-              key: const Key('privacy-tile'),
-              icon: Icons.privacy_tip_outlined,
-              iconColor: AppColors.primary,
-              iconBackground: AppColors.mintSoft,
-              title: 'Privacy & legal',
-              caption: 'How CareConnect handles your information',
-              onTap: () => _open(const PrivacyScreen()),
-            ),
-            if (widget.onLogout != null) ...[
-              const SizedBox(height: 26),
-              OutlinedButton.icon(
-                key: const Key('profile-sign-out-button'),
-                onPressed: widget.onLogout,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Sign out'),
-              ),
-            ],
-            const SizedBox(height: 20),
-            const Center(
-              child: Text(
-                'CareConnect · Personal healthcare companion',
-                style: TextStyle(color: AppColors.muted, fontSize: 10),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            key: const Key('guest-profile-sign-in'),
+            onPressed: onSignIn,
+            icon: const Icon(Icons.login_rounded),
+            label: const Text('Sign in'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const Key('guest-profile-create-account'),
+            onPressed: onCreateAccount,
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            label: const Text('Create account'),
+          ),
+          const SizedBox(height: 28),
+          const _SectionLabel('WITH AN ACCOUNT'),
+          const SizedBox(height: 12),
+          const _GuestBenefit(
+            icon: Icons.calendar_month_outlined,
+            title: 'Book and manage appointments',
+          ),
+          const SizedBox(height: 10),
+          const _GuestBenefit(
+            icon: Icons.qr_code_2_rounded,
+            title: 'Use QR reception check-in',
+          ),
+          const SizedBox(height: 10),
+          const _GuestBenefit(
+            icon: Icons.notifications_none_rounded,
+            title: 'Receive care updates and reminders',
+          ),
+        ],
       ),
+    ),
+  );
+}
+
+class _GuestBenefit extends StatelessWidget {
+  const _GuestBenefit({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: AppColors.mintSoft,
+          foregroundColor: AppColors.primary,
+          child: Icon(icon, size: 20),
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
     ),
   );
 }

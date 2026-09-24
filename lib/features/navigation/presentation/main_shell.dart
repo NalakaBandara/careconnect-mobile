@@ -23,6 +23,7 @@ class MainShell extends StatefulWidget {
     this.onLogout,
     this.onSessionExpired,
     this.onSignInRequired,
+    this.onCreateAccountRequired,
     this.accessTokenProvider,
     this.guestFindCareRepository,
     this.useLiveGuestDirectory = true,
@@ -33,6 +34,7 @@ class MainShell extends StatefulWidget {
   final Future<void> Function()? onLogout;
   final Future<void> Function()? onSessionExpired;
   final VoidCallback? onSignInRequired;
+  final VoidCallback? onCreateAccountRequired;
   final AccessTokenProvider? accessTokenProvider;
   final FindCareDataSource? guestFindCareRepository;
   final bool useLiveGuestDirectory;
@@ -163,10 +165,13 @@ class _MainShellState extends State<MainShell> {
       if (_loadedIndexes.contains(3))
         ProfileScreen(
           user: _user,
+          isGuest: _user == null,
           repository: _userRepository,
           onUserChanged: _updateUser,
           onLogout: widget.onLogout,
           onNotifications: _openNotifications,
+          onSignIn: widget.onSignInRequired,
+          onCreateAccount: widget.onCreateAccountRequired,
         )
       else
         const SizedBox.shrink(),

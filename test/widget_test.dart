@@ -137,6 +137,40 @@ void main() {
     expect(find.text('Your care starts here.'), findsOneWidget);
   });
 
+  testWidgets('guest profile offers direct sign in and registration', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final auth = _FakeAuthDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: WelcomeScreen(
+          authService: auth,
+          homeBuilder: buildOfflineAuthenticatedHome,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('browse-as-guest-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-profile')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('guest-profile-screen')), findsOneWidget);
+    expect(find.text('You’re browsing as a guest'), findsOneWidget);
+    expect(find.byKey(const Key('guest-profile-sign-in')), findsOneWidget);
+    expect(
+      find.byKey(const Key('guest-profile-create-account')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('guest-profile-create-account')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('register-screen')), findsOneWidget);
+  });
+
   testWidgets('signs in with the CareConnect API account flow', (tester) async {
     usePhoneSize(tester);
     final auth = _FakeAuthDataSource();
