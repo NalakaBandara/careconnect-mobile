@@ -2,6 +2,7 @@ import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_endpoints.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 
 abstract interface class AdminDataSource {
@@ -108,6 +109,10 @@ abstract interface class AdminDataSource {
     required String title,
     required String message,
   });
+
+  Future<CareAppointment> getAppointment(String appointmentId);
+
+  Future<CheckInRecord> createReceptionCheckIn(String appointmentId);
 }
 
 class AdminRepository implements AdminDataSource {
@@ -448,6 +453,21 @@ class AdminRepository implements AdminDataSource {
         'message': message.trim(),
       },
     );
+  }
+
+  @override
+  Future<CareAppointment> getAppointment(String appointmentId) async {
+    final response = await _client.get(ApiEndpoints.appointment(appointmentId));
+    return CareAppointment.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<CheckInRecord> createReceptionCheckIn(String appointmentId) async {
+    final response = await _client.post(
+      ApiEndpoints.appointmentCheckIn(appointmentId),
+      body: const {'method': 'RECEPTION_QR'},
+    );
+    return CheckInRecord.fromJson(response as Map<String, dynamic>);
   }
 
   static Map<String, dynamic> _objectMap(Object? value) {

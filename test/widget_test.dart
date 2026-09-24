@@ -7,6 +7,7 @@ import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_shell.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_qr_check_in_screen.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
@@ -1282,6 +1283,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('admin-nav-account')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-qr-check-in-tile')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('admin-catalog-tile')));
     await tester.pumpAndSettle();
@@ -1292,7 +1294,13 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('admin-notification-tile')));
+    final notificationTile = find.byKey(const Key('admin-notification-tile'));
+    await tester.drag(
+      find.byKey(const Key('admin-account')),
+      const Offset(0, -220),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(notificationTile);
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('admin-notification-composer')),
@@ -1308,7 +1316,9 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('admin-security-tile')));
+    final securityTile = find.byKey(const Key('admin-security-tile'));
+    await tester.ensureVisible(securityTile);
+    await tester.tap(securityTile);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-role-catalog')), findsOneWidget);
     await tester.tap(find.text('Audit activity'));
@@ -1316,12 +1326,73 @@ void main() {
     expect(find.byKey(const Key('admin-audit-logs')), findsOneWidget);
     expect(find.text('Appointment Updated'), findsOneWidget);
   });
+
+  testWidgets('admin verifies an appointment and records QR check-in', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAdminDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AdminQrCheckInScreen(
+          repository: repository,
+          scannerBuilder: (_) => const ColoredBox(color: Colors.black),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('admin-enter-appointment-id')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('admin-manual-appointment-id')),
+      '4821',
+    );
+    await tester.tap(find.byKey(const Key('admin-find-appointment')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('admin-qr-appointment-review')),
+      findsOneWidget,
+    );
+    expect(find.text('CC-004821'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('admin-reception-check-in')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin-confirm-reception-check-in')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('admin-qr-check-in-success')), findsOneWidget);
+    expect(repository.receptionCheckInAppointmentId, '4821');
+    expect(find.text('7'), findsOneWidget);
+  });
 }
 
 class _FakeAdminDataSource implements AdminDataSource {
   int clinicUpdates = 0;
   AppointmentStatus? updatedAppointmentStatus;
   String? assignedRoleId;
+  String? receptionCheckInAppointmentId;
+
+  @override
+  Future<CareAppointment> getAppointment(String appointmentId) async =>
+      AppointmentsPreviewData.appointments.firstWhere(
+        (appointment) => appointment.id == appointmentId,
+      );
+
+  @override
+  Future<CheckInRecord> createReceptionCheckIn(String appointmentId) async {
+    receptionCheckInAppointmentId = appointmentId;
+    return CheckInRecord(
+      id: '55',
+      appointmentId: appointmentId,
+      checkedInAt: DateTime(2026, 9, 24, 9, 25),
+      checkedInByUserId: '1',
+      method: 'RECEPTION_QR',
+      queueNumber: 7,
+    );
+  }
 
   @override
   Future<CareSpecialty> saveSpecialty({

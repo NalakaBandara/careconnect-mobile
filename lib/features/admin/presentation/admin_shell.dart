@@ -9,6 +9,7 @@ import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_oper
 import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_clinic_operations_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_catalog_notifications_screen.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_qr_check_in_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -1122,6 +1123,18 @@ class _AdminAccountPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
+        _AdminMenuTile(
+          key: const Key('admin-qr-check-in-tile'),
+          icon: Icons.qr_code_scanner_rounded,
+          title: 'Scan patient QR',
+          subtitle: 'Verify an appointment and record reception check-in',
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => AdminQrCheckInScreen(repository: repository),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _AdminMenuTile(
           key: const Key('admin-catalog-tile'),
           icon: Icons.medical_services_outlined,
