@@ -13,6 +13,7 @@ import 'package:careconnect_mobile/features/appointments/data/appointments_repos
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
+import 'package:careconnect_mobile/features/appointments/presentation/check_in_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/booking/presentation/booking_flow_screen.dart';
@@ -911,6 +912,31 @@ void main() {
     expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
   });
 
+  testWidgets('shows the QR image returned by the appointment API', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final appointment = AppointmentsPreviewData.appointments.first.copyWith(
+      qrCode:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: CheckInScreen(appointment: appointment),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('appointment-qr-code')), findsOneWidget);
+    expect(find.text('APPOINTMENT QR'), findsOneWidget);
+    expect(
+      find.text('Show this QR code at reception when you arrive.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('loads, checks in and cancels a backend appointment', (
     tester,
   ) async {
@@ -1017,6 +1043,7 @@ void main() {
       'bookingReference': 'CC-4821-MEH',
       'reason': 'Review',
       'notes': null,
+      'qrCode': 'data:image/png;base64,aGVhbHRoY2FyZQ==',
       'createdAt': '2026-09-17T09:00:00.000Z',
       'updatedAt': '2026-09-17T09:00:00.000Z',
     });
@@ -1025,6 +1052,7 @@ void main() {
     expect(appointment.doctor.displayName, 'Dr. Maya Fernando');
     expect(appointment.service.durationMinutes, 20);
     expect(appointment.reference, 'CC-4821-MEH');
+    expect(appointment.qrCode, startsWith('data:image/png;base64,'));
   });
 
   test('parses the backend check-in response contract', () {

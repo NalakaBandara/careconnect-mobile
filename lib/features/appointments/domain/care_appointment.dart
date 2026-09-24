@@ -118,6 +118,7 @@ class CareAppointment {
     this.bookingReference,
     this.reason,
     this.notes,
+    this.qrCode,
     this.createdAt,
     this.updatedAt,
   });
@@ -135,6 +136,7 @@ class CareAppointment {
   final String? bookingReference;
   final String? reason;
   final String? notes;
+  final String? qrCode;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -160,6 +162,7 @@ class CareAppointment {
     String? bookingReference,
     String? reason,
     String? notes,
+    String? qrCode,
   }) => CareAppointment(
     id: id,
     patientId: patientId,
@@ -174,6 +177,7 @@ class CareAppointment {
     bookingReference: bookingReference ?? this.bookingReference,
     reason: reason ?? this.reason,
     notes: notes ?? this.notes,
+    qrCode: qrCode ?? this.qrCode,
     createdAt: createdAt,
     updatedAt: DateTime.now(),
   );
@@ -196,6 +200,7 @@ class CareAppointment {
     bookingReference: json['bookingReference'] as String?,
     reason: json['reason'] as String?,
     notes: json['notes'] as String?,
+    qrCode: json['qrCode'] as String?,
     createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
     updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
   );

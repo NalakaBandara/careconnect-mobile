@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
@@ -22,6 +25,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   String? _error;
 
   CareAppointment get appointment => widget.appointment;
+  bool get _hasQrCode => appointment.qrCode?.trim().isNotEmpty == true;
 
   @override
   void initState() {
@@ -59,7 +63,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
       children: [
         Text(
-          _record == null ? 'Ready when you arrive' : 'You are checked in',
+          _record == null
+              ? (_hasQrCode ? 'Your appointment QR' : 'Ready when you arrive')
+              : 'You are checked in',
           style: Theme.of(
             context,
           ).textTheme.displaySmall?.copyWith(fontSize: 31),
@@ -67,7 +73,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
         const SizedBox(height: 9),
         Text(
           _record == null
-              ? 'Keep this screen ready for reception. Your secure code will activate when the clinic enables mobile check-in.'
+              ? (_hasQrCode
+                    ? 'Show this QR code at reception when you arrive.'
+                    : 'Keep this screen ready for reception. Your QR code will appear when it is available.')
               : 'Reception has recorded your arrival. Keep your queue details handy.',
           style: const TextStyle(color: AppColors.muted, height: 1.5),
         ),
@@ -86,9 +94,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ),
             child: Column(
               children: [
-                const _PreviewBadge(),
+                _QrBadge(available: _hasQrCode),
                 const SizedBox(height: 18),
-                _LockedCode(reference: appointment.reference),
+                if (_hasQrCode)
+                  _AppointmentQrCode(dataUrl: appointment.qrCode!)
+                else
+                  _LockedCode(reference: appointment.reference),
                 const SizedBox(height: 18),
                 const Text(
                   'Appointment reference',
@@ -132,26 +143,35 @@ class _CheckInScreenState extends State<CheckInScreen> {
               color: const Color(0xFFFFF1D2),
               borderRadius: BorderRadius.circular(19),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.lock_clock_outlined, color: Color(0xFF93600A)),
-                SizedBox(width: 11),
+                Icon(
+                  _hasQrCode
+                      ? Icons.qr_code_2_rounded
+                      : Icons.lock_clock_outlined,
+                  color: const Color(0xFF93600A),
+                ),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Secure code not active yet',
-                        style: TextStyle(
+                        _hasQrCode
+                            ? 'Reception check-in'
+                            : 'QR code not available yet',
+                        style: const TextStyle(
                           color: Color(0xFF76500D),
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'A signed, expiring QR token is required before scanning can be enabled safely.',
-                        style: TextStyle(
+                        _hasQrCode
+                            ? 'This code identifies your appointment. Only show it to clinic staff.'
+                            : 'Refresh your appointment later or provide the booking reference to reception.',
+                        style: const TextStyle(
                           color: Color(0xFF76500D),
                           fontSize: 11,
                           height: 1.4,
@@ -231,8 +251,10 @@ class _CheckInLookupError extends StatelessWidget {
   );
 }
 
-class _PreviewBadge extends StatelessWidget {
-  const _PreviewBadge();
+class _QrBadge extends StatelessWidget {
+  const _QrBadge({required this.available});
+
+  final bool available;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -241,14 +263,88 @@ class _PreviewBadge extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(99),
     ),
-    child: const Text(
-      'CHECK-IN PREVIEW',
-      style: TextStyle(
+    child: Text(
+      available ? 'APPOINTMENT QR' : 'CHECK-IN PREVIEW',
+      style: const TextStyle(
         color: AppColors.primary,
         fontSize: 10,
         fontWeight: FontWeight.w900,
         letterSpacing: 0.7,
       ),
+    ),
+  );
+}
+
+class _AppointmentQrCode extends StatelessWidget {
+  const _AppointmentQrCode({required this.dataUrl});
+
+  final String dataUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = _decodeDataUrl(dataUrl);
+    if (bytes == null) {
+      return const _QrLoadError();
+    }
+
+    return Container(
+      key: const Key('appointment-qr-code'),
+      width: 210,
+      height: 210,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14063F3C),
+            blurRadius: 22,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Image.memory(
+        bytes,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.none,
+        gaplessPlayback: true,
+        semanticLabel: 'Appointment check-in QR code',
+      ),
+    );
+  }
+
+  Uint8List? _decodeDataUrl(String value) {
+    final separator = value.indexOf(',');
+    if (separator == -1 || !value.substring(0, separator).contains(';base64')) {
+      return null;
+    }
+    try {
+      return base64Decode(value.substring(separator + 1));
+    } on FormatException {
+      return null;
+    }
+  }
+}
+
+class _QrLoadError extends StatelessWidget {
+  const _QrLoadError();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('appointment-qr-error'),
+    width: 210,
+    height: 210,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.broken_image_outlined, color: AppColors.muted, size: 34),
+        SizedBox(height: 10),
+        Text('QR code unavailable', style: TextStyle(color: AppColors.muted)),
+      ],
     ),
   );
 }
