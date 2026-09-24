@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -10,10 +11,16 @@ import 'package:careconnect_mobile/features/appointments/presentation/appointmen
 import 'package:flutter/material.dart';
 
 class CheckInScreen extends StatefulWidget {
-  const CheckInScreen({super.key, required this.appointment, this.repository});
+  const CheckInScreen({
+    super.key,
+    required this.appointment,
+    this.repository,
+    this.checkInPollInterval = const Duration(seconds: 5),
+  });
 
   final CareAppointment appointment;
   final AppointmentsDataSource? repository;
+  final Duration checkInPollInterval;
 
   @override
   State<CheckInScreen> createState() => _CheckInScreenState();
@@ -22,7 +29,9 @@ class CheckInScreen extends StatefulWidget {
 class _CheckInScreenState extends State<CheckInScreen> {
   CheckInRecord? _record;
   bool _isLoading = false;
+  bool _requestInFlight = false;
   String? _error;
+  Timer? _pollTimer;
 
   CareAppointment get appointment => widget.appointment;
   bool get _hasQrCode => appointment.qrCode?.trim().isNotEmpty == true;
@@ -30,28 +39,52 @@ class _CheckInScreenState extends State<CheckInScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.repository != null) _loadCheckIn();
+    if (widget.repository != null) {
+      unawaited(_loadCheckIn(showLoading: true));
+      _pollTimer = Timer.periodic(widget.checkInPollInterval, (_) {
+        if (_record == null && !_requestInFlight) {
+          unawaited(_loadCheckIn());
+        }
+      });
+    }
   }
 
-  Future<void> _loadCheckIn() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadCheckIn({bool showLoading = false}) async {
+    if (_requestInFlight || widget.repository == null) return;
+    _requestInFlight = true;
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final record = await widget.repository!.getCheckIn(appointment.id);
       if (!mounted) return;
-      setState(() => _record = record);
+      _pollTimer?.cancel();
+      setState(() {
+        _record = record;
+        _error = null;
+      });
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (error.statusCode != 404) {
+      if (error.statusCode != 404 && showLoading) {
         setState(() => _error = 'Check-in status could not be loaded.');
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _error = 'Check-in status could not be loaded.');
+      if (showLoading) {
+        setState(() => _error = 'Check-in status could not be loaded.');
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _requestInFlight = false;
+      if (mounted && showLoading) setState(() => _isLoading = false);
     }
   }
 
@@ -131,7 +164,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
           _CheckedInNotice(record: _record!),
         ] else if (_error != null) ...[
           const SizedBox(height: 14),
-          _CheckInLookupError(message: _error!, onRetry: _loadCheckIn),
+          _CheckInLookupError(
+            message: _error!,
+            onRetry: () => _loadCheckIn(showLoading: true),
+          ),
         ],
         const SizedBox(height: 16),
         _VisitSummary(appointment: appointment),
@@ -169,7 +205,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _hasQrCode
-                            ? 'This code identifies your appointment. Only show it to clinic staff.'
+                            ? 'This code identifies your appointment. Status updates automatically after reception scans it.'
                             : 'Refresh your appointment later or provide the booking reference to reception.',
                         style: const TextStyle(
                           color: Color(0xFF76500D),

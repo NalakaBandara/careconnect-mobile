@@ -938,6 +938,36 @@ void main() {
     );
   });
 
+  testWidgets('patient check-in status updates after reception scans the QR', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _PollingCheckInDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: CheckInScreen(
+          appointment: repository.appointment,
+          repository: repository,
+          checkInPollInterval: const Duration(milliseconds: 20),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.byKey(const Key('checked-in-record')), findsNothing);
+    expect(repository.checkInCalls, 1);
+
+    await tester.pump(const Duration(milliseconds: 25));
+    await tester.pump();
+    expect(find.byKey(const Key('checked-in-record')), findsOneWidget);
+    expect(find.text('Your queue number is 9.'), findsOneWidget);
+    expect(repository.checkInCalls, 2);
+
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(repository.checkInCalls, 2);
+  });
+
   testWidgets('loads, checks in and cancels a backend appointment', (
     tester,
   ) async {
@@ -1846,6 +1876,26 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
       endTime: endTime,
     );
     return appointment;
+  }
+}
+
+class _PollingCheckInDataSource extends _FakeAppointmentsDataSource {
+  int checkInCalls = 0;
+
+  @override
+  Future<CheckInRecord> getCheckIn(String appointmentId) async {
+    checkInCalls++;
+    if (checkInCalls == 1) {
+      throw const ApiException(message: 'Check-in not found', statusCode: 404);
+    }
+    return CheckInRecord(
+      id: '12',
+      appointmentId: appointmentId,
+      checkedInAt: DateTime(2026, 9, 24, 10, 30),
+      checkedInByUserId: '1',
+      method: 'RECEPTION_QR',
+      queueNumber: 9,
+    );
   }
 }
 
