@@ -33,18 +33,21 @@ class CareService {
     required this.name,
     this.description,
     this.durationMinutes,
+    this.status,
   });
 
   final String id;
   final String name;
   final String? description;
   final int? durationMinutes;
+  final String? status;
 
   factory CareService.fromJson(Map<String, dynamic> json) => CareService(
     id: json['id'].toString(),
     name: json['name'] as String? ?? 'Healthcare service',
     description: json['description'] as String?,
     durationMinutes: json['durationMinutes'] as int?,
+    status: json['status'] as String?,
   );
 }
 

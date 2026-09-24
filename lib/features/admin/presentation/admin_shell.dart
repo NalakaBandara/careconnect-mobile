@@ -8,6 +8,7 @@ import 'package:careconnect_mobile/features/admin/presentation/admin_security_sc
 import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_operations_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_clinic_operations_screen.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_catalog_notifications_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -113,7 +114,9 @@ class _AdminShellState extends State<AdminShell> {
                 ),
                 _AdminAccountPage(
                   user: widget.user,
+                  data: data,
                   repository: _repository,
+                  onRefresh: _refresh,
                   onLogout: widget.onLogout,
                 ),
               ],
@@ -1054,12 +1057,16 @@ class _StatusDot extends StatelessWidget {
 class _AdminAccountPage extends StatelessWidget {
   const _AdminAccountPage({
     required this.user,
+    required this.data,
     required this.repository,
+    required this.onRefresh,
     required this.onLogout,
   });
 
   final CurrentUser user;
+  final AdminDashboardSnapshot data;
   final AdminDataSource repository;
+  final Future<void> Function() onRefresh;
   final Future<void> Function()? onLogout;
 
   @override
@@ -1115,6 +1122,38 @@ class _AdminAccountPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
+        _AdminMenuTile(
+          key: const Key('admin-catalog-tile'),
+          icon: Icons.medical_services_outlined,
+          title: 'Care catalog',
+          subtitle: 'Create and update specialties and services',
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => AdminCatalogScreen(
+                specialties: data.specialties,
+                services: data.services,
+                repository: repository,
+                onChanged: onRefresh,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _AdminMenuTile(
+          key: const Key('admin-notification-tile'),
+          icon: Icons.notifications_active_outlined,
+          title: 'Send notification',
+          subtitle: 'Send an update to a CareConnect account',
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => AdminNotificationComposerScreen(
+                users: data.users,
+                repository: repository,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _AdminMenuTile(
           key: const Key('admin-security-tile'),
           icon: Icons.policy_outlined,

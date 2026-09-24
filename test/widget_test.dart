@@ -1254,6 +1254,32 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('admin-nav-account')));
     await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('admin-catalog-tile')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-specialty-catalog')), findsOneWidget);
+    await tester.tap(find.text('Services'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('admin-service-catalog')), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('admin-notification-tile')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('admin-notification-composer')),
+      findsOneWidget,
+    );
+    final sendNotification = find.byKey(const Key('admin-send-notification'));
+    await tester.ensureVisible(sendNotification);
+    await tester.tap(sendNotification);
+    await tester.pump();
+    expect(find.text('Select a recipient'), findsOneWidget);
+    expect(find.text('Title is required'), findsOneWidget);
+    expect(find.text('Message is required'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const Key('admin-security-tile')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-role-catalog')), findsOneWidget);
@@ -1268,6 +1294,37 @@ class _FakeAdminDataSource implements AdminDataSource {
   int clinicUpdates = 0;
   AppointmentStatus? updatedAppointmentStatus;
   String? assignedRoleId;
+
+  @override
+  Future<CareSpecialty> saveSpecialty({
+    String? id,
+    required String name,
+    String? description,
+  }) async =>
+      CareSpecialty(id: id ?? '99', name: name, description: description);
+
+  @override
+  Future<CareService> saveService({
+    String? id,
+    required String name,
+    String? description,
+    int? durationMinutes,
+    required String status,
+  }) async => CareService(
+    id: id ?? '99',
+    name: name,
+    description: description,
+    durationMinutes: durationMinutes,
+    status: status,
+  );
+
+  @override
+  Future<void> sendNotification({
+    required String userId,
+    required String type,
+    required String title,
+    required String message,
+  }) async {}
 
   @override
   Future<void> createClinic(AdminClinic clinic) async {}

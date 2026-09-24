@@ -87,6 +87,27 @@ abstract interface class AdminDataSource {
   Future<void> addClinicUser(String clinicId, String userId);
 
   Future<void> removeClinicUser(String clinicId, String userId);
+
+  Future<CareSpecialty> saveSpecialty({
+    String? id,
+    required String name,
+    String? description,
+  });
+
+  Future<CareService> saveService({
+    String? id,
+    required String name,
+    String? description,
+    int? durationMinutes,
+    required String status,
+  });
+
+  Future<void> sendNotification({
+    required String userId,
+    required String type,
+    required String title,
+    required String message,
+  });
 }
 
 class AdminRepository implements AdminDataSource {
@@ -371,6 +392,62 @@ class AdminRepository implements AdminDataSource {
   @override
   Future<void> removeClinicUser(String clinicId, String userId) async {
     await _client.delete(ApiEndpoints.clinicUser(clinicId, userId));
+  }
+
+  @override
+  Future<CareSpecialty> saveSpecialty({
+    String? id,
+    required String name,
+    String? description,
+  }) async {
+    final body = {
+      'name': name.trim(),
+      if (description?.trim().isNotEmpty ?? false)
+        'description': description!.trim(),
+    };
+    final response = id == null
+        ? await _client.post(ApiEndpoints.specialties, body: body)
+        : await _client.put(ApiEndpoints.specialty(id), body: body);
+    return CareSpecialty.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<CareService> saveService({
+    String? id,
+    required String name,
+    String? description,
+    int? durationMinutes,
+    required String status,
+  }) async {
+    final body = {
+      'name': name.trim(),
+      if (description?.trim().isNotEmpty ?? false)
+        'description': description!.trim(),
+      'durationMinutes': durationMinutes,
+      'status': status,
+    };
+    final response = id == null
+        ? await _client.post(ApiEndpoints.services, body: body)
+        : await _client.put(ApiEndpoints.service(id), body: body);
+    return CareService.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> sendNotification({
+    required String userId,
+    required String type,
+    required String title,
+    required String message,
+  }) async {
+    await _client.post(
+      ApiEndpoints.notifications,
+      body: {
+        'userId': userId,
+        'type': type,
+        'title': title.trim(),
+        'message': message.trim(),
+      },
+    );
   }
 
   static Map<String, dynamic> _objectMap(Object? value) {

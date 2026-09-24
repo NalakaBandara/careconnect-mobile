@@ -18,6 +18,8 @@ abstract final class ApiEndpoints {
   static const auditLogs = '$apiVersion/audit-logs';
 
   static String clinic(Object id) => '$clinics/$id';
+  static String specialty(Object id) => '$specialties/$id';
+  static String service(Object id) => '$services/$id';
   static String clinicDoctors(Object id) => '${clinic(id)}/doctors';
   static String clinicServices(Object id) => '${clinic(id)}/services';
   static String clinicService(Object clinicId, Object serviceId) =>
