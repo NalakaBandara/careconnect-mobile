@@ -123,7 +123,12 @@ class _MainShellState extends State<MainShell> {
 
   void _openNotifications() => Navigator.of(context).push<void>(
     MaterialPageRoute(
-      builder: (_) => NotificationsScreen(repository: _notificationsRepository),
+      builder: (_) => NotificationsScreen(
+        repository: _notificationsRepository,
+        isGuest: _user == null,
+        onSignIn: widget.onSignInRequired,
+        onCreateAccount: widget.onCreateAccountRequired,
+      ),
     ),
   );
 
@@ -134,6 +139,10 @@ class _MainShellState extends State<MainShell> {
         HomeScreen(
           firstName: _user?.firstName,
           appointmentsController: _appointmentsController,
+          careRepository: _findCareRepository,
+          isGuest: _user == null,
+          usePreviewData: false,
+          onSignInRequired: widget.onSignInRequired,
           onFindCare: () => _select(1),
           onAppointments: () => _select(2),
           onProfile: () => _select(3),
@@ -159,6 +168,9 @@ class _MainShellState extends State<MainShell> {
           key: const ValueKey('appointments-page'),
           repository: _appointmentsRepository,
           appointmentsController: _appointmentsController,
+          isGuest: _user == null,
+          onSignIn: widget.onSignInRequired,
+          onCreateAccount: widget.onCreateAccountRequired,
         )
       else
         const SizedBox.shrink(),

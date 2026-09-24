@@ -8,9 +8,18 @@ import 'package:flutter/material.dart';
 enum _InboxFilter { all, unread }
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key, this.repository});
+  const NotificationsScreen({
+    super.key,
+    this.repository,
+    this.isGuest = false,
+    this.onSignIn,
+    this.onCreateAccount,
+  });
 
   final NotificationsDataSource? repository;
+  final bool isGuest;
+  final VoidCallback? onSignIn;
+  final VoidCallback? onCreateAccount;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -34,10 +43,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    _notifications = _isPreview
+    _notifications = _isPreview && !widget.isGuest
         ? List.of(NotificationsPreviewData.notifications)
         : <CareNotification>[];
-    if (!_isPreview) _load();
+    if (!_isPreview && !widget.isGuest) _load();
   }
 
   Future<void> _load() async {
@@ -175,71 +184,80 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Notifications'),
-      actions: [
-        if (_unreadCount > 0 || _isMarkingAll)
-          TextButton(
-            key: const Key('mark-all-notifications-read'),
-            onPressed: _isMarkingAll ? null : _markAllRead,
-            child: Text(_isMarkingAll ? 'Marking…' : 'Mark all read'),
+  Widget build(BuildContext context) => widget.isGuest
+      ? _GuestNotificationsScreen(
+          onSignIn: widget.onSignIn,
+          onCreateAccount: widget.onCreateAccount,
+        )
+      : Scaffold(
+          appBar: AppBar(
+            title: const Text('Notifications'),
+            actions: [
+              if (_unreadCount > 0 || _isMarkingAll)
+                TextButton(
+                  key: const Key('mark-all-notifications-read'),
+                  onPressed: _isMarkingAll ? null : _markAllRead,
+                  child: Text(_isMarkingAll ? 'Marking…' : 'Mark all read'),
+                ),
+              const SizedBox(width: 8),
+            ],
           ),
-        const SizedBox(width: 8),
-      ],
-    ),
-    body: SafeArea(
-      top: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+          body: SafeArea(
+            top: false,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Your care updates',
-                  key: const Key('notifications-title'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displaySmall?.copyWith(fontSize: 30),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your care updates',
+                        key: const Key('notifications-title'),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.displaySmall?.copyWith(fontSize: 30),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        _unreadCount == 0
+                            ? 'You are all caught up.'
+                            : '$_unreadCount ${_unreadCount == 1 ? 'update' : 'updates'} waiting for you.',
+                        style: const TextStyle(color: AppColors.muted),
+                      ),
+                      const SizedBox(height: 17),
+                      Row(
+                        children: [
+                          _FilterChip(
+                            key: const Key('notifications-all-filter'),
+                            label: 'All',
+                            selected: _filter == _InboxFilter.all,
+                            onTap: () =>
+                                setState(() => _filter = _InboxFilter.all),
+                          ),
+                          const SizedBox(width: 9),
+                          _FilterChip(
+                            key: const Key('notifications-unread-filter'),
+                            label: 'Unread $_unreadCount',
+                            selected: _filter == _InboxFilter.unread,
+                            onTap: () =>
+                                setState(() => _filter = _InboxFilter.unread),
+                          ),
+                          if (_isPreview) ...[
+                            const Spacer(),
+                            const _PreviewBadge(),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  _unreadCount == 0
-                      ? 'You are all caught up.'
-                      : '$_unreadCount ${_unreadCount == 1 ? 'update' : 'updates'} waiting for you.',
-                  style: const TextStyle(color: AppColors.muted),
-                ),
-                const SizedBox(height: 17),
-                Row(
-                  children: [
-                    _FilterChip(
-                      key: const Key('notifications-all-filter'),
-                      label: 'All',
-                      selected: _filter == _InboxFilter.all,
-                      onTap: () => setState(() => _filter = _InboxFilter.all),
-                    ),
-                    const SizedBox(width: 9),
-                    _FilterChip(
-                      key: const Key('notifications-unread-filter'),
-                      label: 'Unread $_unreadCount',
-                      selected: _filter == _InboxFilter.unread,
-                      onTap: () =>
-                          setState(() => _filter = _InboxFilter.unread),
-                    ),
-                    if (_isPreview) ...[const Spacer(), const _PreviewBadge()],
-                  ],
-                ),
+                Expanded(child: _buildContent()),
               ],
             ),
           ),
-          Expanded(child: _buildContent()),
-        ],
-      ),
-    ),
-  );
+        );
 
   Widget _buildContent() {
     if (_isLoading && _notifications.isEmpty) {
@@ -291,6 +309,73 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
     );
   }
+}
+
+class _GuestNotificationsScreen extends StatelessWidget {
+  const _GuestNotificationsScreen({this.onSignIn, this.onCreateAccount});
+
+  final VoidCallback? onSignIn;
+  final VoidCallback? onCreateAccount;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    key: const Key('guest-notifications-screen'),
+    appBar: AppBar(title: const Text('Notifications')),
+    body: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: const BoxDecoration(
+                color: AppColors.mintSoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                color: AppColors.primary,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Sign in to see care updates',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 9),
+            const Text(
+              'Appointment confirmations, reminders and check-in updates will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted, height: 1.45),
+            ),
+            const SizedBox(height: 26),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const Key('guest-notifications-sign-in'),
+                onPressed: onSignIn,
+                child: const Text('Sign in'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const Key('guest-notifications-create-account'),
+                onPressed: onCreateAccount,
+                child: const Text('Create account'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class NotificationDetailScreen extends StatelessWidget {

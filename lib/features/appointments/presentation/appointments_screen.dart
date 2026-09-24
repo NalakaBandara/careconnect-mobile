@@ -12,10 +12,16 @@ class AppointmentsScreen extends StatefulWidget {
     super.key,
     this.repository,
     this.appointmentsController,
+    this.isGuest = false,
+    this.onSignIn,
+    this.onCreateAccount,
   });
 
   final AppointmentsDataSource? repository;
   final AppointmentsController? appointmentsController;
+  final bool isGuest;
+  final VoidCallback? onSignIn;
+  final VoidCallback? onCreateAccount;
 
   @override
   State<AppointmentsScreen> createState() => _AppointmentsScreenState();
@@ -35,10 +41,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    _appointments = _isPreview
+    _appointments = _isPreview && !widget.isGuest
         ? List.of(AppointmentsPreviewData.appointments)
         : [];
-    if (!_isPreview) {
+    if (!_isPreview && !widget.isGuest) {
       _controller = widget.appointmentsController;
       if (_controller == null) {
         _controller = AppointmentsController(widget.repository!);
@@ -104,6 +110,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isGuest) {
+      return _GuestAppointmentsScreen(
+        onSignIn: widget.onSignIn,
+        onCreateAccount: widget.onCreateAccount,
+      );
+    }
     final upcomingCount = _appointments.where((item) => !item.isPast).length;
     final pastCount = _appointments.where((item) => item.isPast).length;
     final visible = _visibleAppointments;
@@ -252,6 +264,91 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       ),
     );
   }
+}
+
+class _GuestAppointmentsScreen extends StatelessWidget {
+  const _GuestAppointmentsScreen({this.onSignIn, this.onCreateAccount});
+
+  final VoidCallback? onSignIn;
+  final VoidCallback? onCreateAccount;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    key: const Key('guest-appointments-screen'),
+    body: SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 44, 24, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'MY CARE',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.3,
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              'Your appointments',
+              key: const Key('appointments-title'),
+              style: Theme.of(context).textTheme.displaySmall,
+            ),
+            const Spacer(),
+            Center(
+              child: Container(
+                width: 78,
+                height: 78,
+                decoration: const BoxDecoration(
+                  color: AppColors.mintSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: AppColors.primary,
+                  size: 34,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Sign in to manage your visits',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 9),
+            const Text(
+              'View upcoming appointments, reschedule visits and access your check-in code securely.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted, height: 1.45),
+            ),
+            const SizedBox(height: 26),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const Key('guest-appointments-sign-in'),
+                onPressed: onSignIn,
+                child: const Text('Sign in'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const Key('guest-appointments-create-account'),
+                onPressed: onCreateAccount,
+                child: const Text('Create account'),
+              ),
+            ),
+            const Spacer(),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _LoadingAppointments extends StatelessWidget {

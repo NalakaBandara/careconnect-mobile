@@ -171,6 +171,59 @@ void main() {
     expect(find.byKey(const Key('register-screen')), findsOneWidget);
   });
 
+  testWidgets('guest shell never exposes preview patient records', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeFindCareRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(
+          guestFindCareRepository: repository,
+          onSignInRequired: () {},
+          onCreateAccountRequired: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-guest-appointments')), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Cardiology'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Cardiology'), findsOneWidget);
+    expect(find.byKey(const Key('next-appointment-card')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('nav-appointments')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('guest-appointments-screen')), findsOneWidget);
+    expect(
+      find.byKey(const Key('guest-appointments-create-account')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('appointment-card-4821')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('nav-home')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('home-notifications-button')),
+      -250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('guest-notifications-screen')), findsOneWidget);
+    expect(find.byKey(const Key('notifications-list')), findsNothing);
+    expect(
+      find.byKey(const Key('guest-notifications-create-account')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('signs in with the CareConnect API account flow', (tester) async {
     usePhoneSize(tester);
     final auth = _FakeAuthDataSource();
@@ -495,7 +548,16 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: const MainShell(useLiveGuestDirectory: false),
+        home: const MainShell(
+          user: CurrentUser(
+            id: 'preview-user',
+            email: 'preview@example.com',
+            firstName: 'Preview',
+            lastName: 'User',
+            roles: ['PATIENT'],
+          ),
+          useLiveGuestDirectory: false,
+        ),
       ),
     );
 

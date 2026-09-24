@@ -3,6 +3,8 @@ import 'package:careconnect_mobile/features/appointments/data/appointments_previ
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
+import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/home/data/home_preview_data.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,10 @@ class HomeScreen extends StatefulWidget {
     this.firstName,
     this.repository,
     this.appointmentsController,
+    this.careRepository,
+    this.isGuest = false,
+    this.usePreviewData = true,
+    this.onSignInRequired,
     required this.onFindCare,
     required this.onAppointments,
     required this.onProfile,
@@ -22,6 +28,10 @@ class HomeScreen extends StatefulWidget {
   final String? firstName;
   final AppointmentsDataSource? repository;
   final AppointmentsController? appointmentsController;
+  final FindCareDataSource? careRepository;
+  final bool isGuest;
+  final bool usePreviewData;
+  final VoidCallback? onSignInRequired;
 
   final VoidCallback onFindCare;
   final VoidCallback onAppointments;
@@ -34,6 +44,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late List<CareAppointment> _appointments;
+  late List<CareCategory> _categories;
 
   bool _isLoading = false;
   String? _error;
@@ -41,8 +52,13 @@ class _HomeScreenState extends State<HomeScreen> {
   AppointmentsController? _controller;
   bool _ownsController = false;
 
+  bool get _hasLiveAppointments =>
+      widget.repository != null || widget.appointmentsController != null;
   bool get _isPreview =>
-      widget.repository == null && widget.appointmentsController == null;
+      widget.usePreviewData &&
+      !widget.isGuest &&
+      widget.repository == null &&
+      widget.appointmentsController == null;
 
   @override
   void initState() {
@@ -51,8 +67,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _appointments = _isPreview
         ? List.of(AppointmentsPreviewData.appointments)
         : [];
+    _categories = widget.careRepository == null && widget.usePreviewData
+        ? List.of(HomePreviewData.categories)
+        : [];
 
-    if (!_isPreview) {
+    if (_hasLiveAppointments) {
       _controller = widget.appointmentsController;
 
       if (_controller == null) {
@@ -64,6 +83,45 @@ class _HomeScreenState extends State<HomeScreen> {
       _syncAppointments();
       _controller!.load();
     }
+    if (widget.careRepository != null) _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final specialties = await widget.careRepository!.getSpecialties();
+      if (!mounted) return;
+      setState(() {
+        _categories = specialties
+            .take(8)
+            .toList(growable: false)
+            .asMap()
+            .entries
+            .map((entry) => _categoryFromSpecialty(entry.value, entry.key))
+            .toList(growable: false);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _categories = []);
+    }
+  }
+
+  CareCategory _categoryFromSpecialty(CareSpecialty specialty, int index) {
+    const styles = [
+      (Icons.medical_services_outlined, Color(0xFF087E75), Color(0xFFE1F5EF)),
+      (Icons.favorite_outline_rounded, Color(0xFF7957C8), Color(0xFFF0E9FF)),
+      (Icons.health_and_safety_outlined, Color(0xFF5276D8), Color(0xFFE7EFFE)),
+      (Icons.healing_rounded, Color(0xFF9A6810), Color(0xFFFFF1D2)),
+    ];
+    final style = styles[index % styles.length];
+    return CareCategory(
+      name: specialty.name,
+      caption: specialty.description?.trim().isNotEmpty == true
+          ? specialty.description!.trim()
+          : 'View specialists',
+      icon: style.$1,
+      color: style.$2,
+      background: style.$3,
+    );
   }
 
   void _syncAppointments() {
@@ -79,8 +137,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _loadDashboard() {
-    return _controller!.refresh();
+  Future<void> _refreshDashboard() async {
+    final tasks = <Future<void>>[];
+    if (_controller != null) tasks.add(_controller!.refresh());
+    if (widget.careRepository != null) tasks.add(_loadCategories());
+    if (tasks.isEmpty) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      return;
+    }
+    await Future.wait(tasks);
   }
 
   @override
@@ -128,11 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: _isPreview
-              ? () async {
-                  await Future<void>.delayed(const Duration(milliseconds: 250));
-                }
-              : _loadDashboard,
+          onRefresh: _refreshDashboard,
           child: CustomScrollView(
             key: const Key('home-scroll-view'),
             physics: const AlwaysScrollableScrollPhysics(),
@@ -229,9 +290,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _QuickAction(
                             icon: Icons.calendar_month_rounded,
                             label: 'Appointments',
-                            caption:
-                                '${upcoming.length} upcoming '
-                                '${upcoming.length == 1 ? 'visit' : 'visits'}',
+                            caption: widget.isGuest
+                                ? 'Sign in to view'
+                                : '${upcoming.length} upcoming '
+                                      '${upcoming.length == 1 ? 'visit' : 'visits'}',
                             color: const Color(0xFF5276D8),
                             background: AppColors.blueSoft,
                             onTap: widget.onAppointments,
@@ -250,10 +312,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 12),
 
-                    if (_isLoading && nextAppointment == null)
+                    if (widget.isGuest)
+                      _GuestAppointmentsCard(onSignIn: widget.onSignInRequired)
+                    else if (_isLoading && nextAppointment == null)
                       const _DashboardLoading()
                     else if (_error != null && nextAppointment == null)
-                      _DashboardError(message: _error!, onRetry: _loadDashboard)
+                      _DashboardError(
+                        message: _error!,
+                        onRetry: _refreshDashboard,
+                      )
                     else if (nextAppointment == null)
                       _NoUpcomingAppointments(onFindCare: widget.onFindCare)
                     else
@@ -272,21 +339,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 12),
 
-                    SizedBox(
-                      height: 138,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: HomePreviewData.categories.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 10),
-                        itemBuilder: (context, index) {
-                          return _CategoryCard(
-                            category: HomePreviewData.categories[index],
-                            onTap: widget.onFindCare,
-                          );
-                        },
+                    if (_categories.isEmpty)
+                      _CareCategoriesEmpty(onFindCare: widget.onFindCare)
+                    else
+                      SizedBox(
+                        height: 138,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _categories.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 10),
+                          itemBuilder: (context, index) {
+                            return _CategoryCard(
+                              category: _categories[index],
+                              onTap: widget.onFindCare,
+                            );
+                          },
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: 22),
 
@@ -963,6 +1033,80 @@ class _DashboardError extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GuestAppointmentsCard extends StatelessWidget {
+  const _GuestAppointmentsCard({this.onSignIn});
+
+  final VoidCallback? onSignIn;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('home-guest-appointments'),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.mintSoft,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      children: [
+        const CircleAvatar(
+          backgroundColor: Colors.white,
+          child: Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sign in to see your visits',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Your appointments will stay private and appear here.',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        TextButton(
+          key: const Key('home-guest-sign-in'),
+          onPressed: onSignIn,
+          child: const Text('Sign in'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _CareCategoriesEmpty extends StatelessWidget {
+  const _CareCategoriesEmpty({required this.onFindCare});
+
+  final VoidCallback onFindCare;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('home-care-categories-empty'),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Browse the care directory to find the right specialist.',
+            style: TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ),
+        TextButton(onPressed: onFindCare, child: const Text('Find care')),
+      ],
+    ),
+  );
 }
 
 class _NoUpcomingAppointments extends StatelessWidget {
