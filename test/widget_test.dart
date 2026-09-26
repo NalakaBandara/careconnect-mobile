@@ -806,27 +806,35 @@ void main() {
     expect(slot, findsOneWidget);
   });
 
-  test('matches available slots to one unambiguous doctor schedule', () async {
-    final client = _FakeAvailabilityApiClient();
-    final repository = FindCareRepository(client);
+  test(
+    'loads an availability range and matches each doctor schedule',
+    () async {
+      final client = _FakeAvailabilityApiClient();
+      final repository = FindCareRepository(client);
 
-    final availability = await repository.getUpcomingAvailability(
-      doctorId: '22',
-      clinicId: '7',
-      days: 2,
-    );
+      final availability = await repository.getUpcomingAvailability(
+        doctorId: '22',
+        clinicId: '7',
+        days: 2,
+      );
 
-    expect(client.requestedPaths.first, '/api/v1/doctors/22/schedules');
-    expect(
-      client.requestedPaths
-          .where((path) => path == '/api/v1/doctors/22/available-slots')
-          .length,
-      2,
-    );
-    expect(availability, hasLength(2));
-    expect(availability.every((day) => day.doctorScheduleId != null), isTrue);
-    expect(availability.first.endTimeFor('09:30'), '09:50');
-  });
+      expect(client.requestedPaths.first, '/api/v1/doctors/22/schedules');
+      expect(
+        client.requestedPaths
+            .where((path) => path == '/api/v1/doctors/22/available-slots')
+            .length,
+        1,
+      );
+      final rangeQuery = client.requestedQueries.last;
+      expect(rangeQuery['clinicId'], '7');
+      expect(rangeQuery['fromDate'], isNotNull);
+      expect(rangeQuery['toDate'], isNotNull);
+      expect(rangeQuery, isNot(contains('date')));
+      expect(availability, hasLength(2));
+      expect(availability.every((day) => day.doctorScheduleId != null), isTrue);
+      expect(availability.first.endTimeFor('09:30'), '09:50');
+    },
+  );
 
   test('parses the backend doctor directory contract', () {
     final professional = CareProfessional.fromJson({
@@ -2399,6 +2407,7 @@ class _FakeAvailabilityApiClient extends ApiClient {
   _FakeAvailabilityApiClient() : super(accessTokenProvider: _noToken);
 
   final List<String> requestedPaths = [];
+  final List<Map<String, dynamic>> requestedQueries = [];
 
   static Future<String?> _noToken() async => null;
 
@@ -2408,6 +2417,7 @@ class _FakeAvailabilityApiClient extends ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     requestedPaths.add(path);
+    requestedQueries.add(queryParameters ?? const {});
     if (path.endsWith('/schedules')) {
       const weekdays = [
         'MONDAY',
@@ -2433,13 +2443,26 @@ class _FakeAvailabilityApiClient extends ApiClient {
         ],
       };
     }
+    final fromDate = DateTime.parse(queryParameters!['fromDate'] as String);
     return {
-      'slots': [
-        {'startTime': '09:30', 'endTime': '09:50', 'available': true},
+      'days': [
+        for (var index = 0; index < 2; index++)
+          {
+            'date': _testIsoDate(fromDate.add(Duration(days: index))),
+            'slots': [
+              {'startTime': '09:30', 'endTime': '09:50', 'available': true},
+              {'startTime': '10:00', 'endTime': '10:20', 'available': false},
+            ],
+          },
       ],
     };
   }
 }
+
+String _testIsoDate(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
+    '${date.month.toString().padLeft(2, '0')}-'
+    '${date.day.toString().padLeft(2, '0')}';
 
 class _FakeDoctorDetailApiClient extends ApiClient {
   _FakeDoctorDetailApiClient() : super(accessTokenProvider: _noToken);
