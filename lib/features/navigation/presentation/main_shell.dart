@@ -51,6 +51,7 @@ class _MainShellState extends State<MainShell> {
   AppointmentsDataSource? _appointmentsRepository;
   AppointmentsController? _appointmentsController;
   FindCareDataSource? _findCareRepository;
+  bool _ownsFindCareRepository = false;
   AppointmentBookingDataSource? _bookingRepository;
   NotificationsRepository? _notificationsRepository;
   UserDataSource? _userRepository;
@@ -72,6 +73,7 @@ class _MainShellState extends State<MainShell> {
         _appointmentsRepository!,
       );
       _findCareRepository = FindCareRepository(_apiClient!);
+      _ownsFindCareRepository = true;
       _bookingRepository = AppointmentBookingRepository(_apiClient!);
       _notificationsRepository = NotificationsRepository(_apiClient!);
       _userRepository = UserRepository(_apiClient!);
@@ -80,6 +82,7 @@ class _MainShellState extends State<MainShell> {
       if (_findCareRepository == null) {
         _apiClient = ApiClient(accessTokenProvider: _noAccessToken);
         _findCareRepository = FindCareRepository(_apiClient!);
+        _ownsFindCareRepository = true;
       }
     }
   }
@@ -89,6 +92,9 @@ class _MainShellState extends State<MainShell> {
   @override
   void dispose() {
     _appointmentsController?.dispose();
+    if (_ownsFindCareRepository && _findCareRepository is FindCareRepository) {
+      (_findCareRepository as FindCareRepository).dispose();
+    }
     _apiClient?.close();
     super.dispose();
   }

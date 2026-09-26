@@ -3,8 +3,10 @@ import 'package:careconnect_mobile/features/appointments/data/appointments_previ
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/find_care/data/care_directory_cache.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
+import 'package:careconnect_mobile/features/find_care/presentation/care_directory_status_banner.dart';
 import 'package:careconnect_mobile/features/home/data/home_preview_data.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
@@ -208,7 +210,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       onNotifications: widget.onNotifications,
                     ),
 
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 18),
+
+                    CareDirectoryStatusBanner(
+                      source: widget.careRepository is CareDirectoryStatusSource
+                          ? widget.careRepository as CareDirectoryStatusSource
+                          : null,
+                    ),
+
+                    const SizedBox(height: 8),
 
                     const Text(
                       'GOOD MORNING',

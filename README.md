@@ -57,6 +57,14 @@ Request and response payloads are sanitized before printing. Authentication
 tokens, passwords, and personal or health-related fields are redacted. API
 logging is disabled automatically in profile and release builds.
 
+## Offline public directory
+
+The latest successfully loaded public specialties, doctors, and clinics are
+stored locally for read-only access when the API cannot be reached. Home and
+Find Care display an offline banner with the cache timestamp. Live availability,
+booking, appointments, patient profiles, and health-related information are not
+cached and continue to require a backend connection.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

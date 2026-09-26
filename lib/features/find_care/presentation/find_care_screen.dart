@@ -1,9 +1,11 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
+import 'package:careconnect_mobile/features/find_care/data/care_directory_cache.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_preview_data.dart';
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
+import 'package:careconnect_mobile/features/find_care/presentation/care_directory_status_banner.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/professional_profile_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
@@ -231,7 +233,13 @@ class _FindCareScreenState extends State<FindCareScreen> {
                       context,
                     ).textTheme.bodyLarge?.copyWith(fontSize: 14),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 18),
+                  CareDirectoryStatusBanner(
+                    source: widget.repository is CareDirectoryStatusSource
+                        ? widget.repository as CareDirectoryStatusSource
+                        : null,
+                  ),
+                  const SizedBox(height: 4),
                   TextField(
                     key: const Key('find-care-search-field'),
                     controller: _searchController,
