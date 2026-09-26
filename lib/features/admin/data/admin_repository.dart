@@ -10,6 +10,16 @@ abstract interface class AdminDataSource {
 
   Future<AdminUser> getUser(String userId);
 
+  Future<AdminUser> createUser({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    String? dateOfBirth,
+    String? phone,
+    required String status,
+  });
+
   Future<void> createDoctor({
     required String userId,
     String? licenseNumber,
@@ -123,6 +133,38 @@ class AdminRepository implements AdminDataSource {
   const AdminRepository(this._client);
 
   final ApiClient _client;
+
+  @override
+  Future<AdminUser> createUser({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    String? dateOfBirth,
+    String? phone,
+    required String status,
+  }) async {
+    final response = _objectMap(
+      await _client.post(
+        ApiEndpoints.users,
+        body: {
+          'email': email.trim().toLowerCase(),
+          'password': password,
+          'firstName': firstName.trim(),
+          'lastName': lastName.trim(),
+          if (dateOfBirth?.trim().isNotEmpty ?? false)
+            'dateOfBirth': dateOfBirth!.trim(),
+          if (phone?.trim().isNotEmpty ?? false) 'phone': phone!.trim(),
+          'status': status,
+        },
+      ),
+    );
+    final data = response['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid admin user response');
+    }
+    return AdminUser.fromJson(data);
+  }
 
   @override
   Future<AdminUser> getUser(String userId) async {

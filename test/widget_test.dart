@@ -10,6 +10,7 @@ import 'package:careconnect_mobile/features/admin/presentation/admin_appointment
 import 'package:careconnect_mobile/features/admin/presentation/admin_shell.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_qr_check_in_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_security_screens.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_user_form_screen.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
@@ -1767,6 +1768,88 @@ void main() {
     expect(patient.status, 'ACTIVE');
   });
 
+  test('admin user creation follows the latest backend contract', () async {
+    final apiClient = _FakeUserApiClient();
+
+    final patient = await AdminRepository(apiClient).createUser(
+      email: ' PATIENT@EXAMPLE.COM ',
+      password: 'temporary-password',
+      firstName: ' Amara ',
+      lastName: ' Silva ',
+      dateOfBirth: '1991-03-14',
+      phone: ' 0771234567 ',
+      status: 'ACTIVE',
+    );
+
+    expect(apiClient.lastPostPath, '/api/v1/users');
+    expect(apiClient.lastPostBody, {
+      'email': 'patient@example.com',
+      'password': 'temporary-password',
+      'firstName': 'Amara',
+      'lastName': 'Silva',
+      'dateOfBirth': '1991-03-14',
+      'phone': '0771234567',
+      'status': 'ACTIVE',
+    });
+    expect(patient.displayName, 'Amara Silva');
+    expect(patient.roles, ['PATIENT']);
+  });
+
+  testWidgets('admin creates a patient account from the user form', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAdminDataSource();
+    bool? result;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Builder(
+          builder: (context) => FilledButton(
+            key: const Key('open-admin-user-form'),
+            onPressed: () async {
+              result = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AdminUserFormScreen(repository: repository),
+                ),
+              );
+            },
+            child: const Text('Open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('open-admin-user-form')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('admin-user-first-name')),
+      'Amara',
+    );
+    await tester.enterText(
+      find.byKey(const Key('admin-user-last-name')),
+      'Silva',
+    );
+    await tester.enterText(
+      find.byKey(const Key('admin-user-email')),
+      'amara@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('admin-user-password')),
+      'temporary-password',
+    );
+    final save = find.byKey(const Key('admin-save-user'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(repository.createUserCalls, 1);
+    expect(repository.createdUserEmail, 'amara@example.com');
+    expect(repository.createdUserStatus, 'ACTIVE');
+    expect(result, isTrue);
+  });
+
   testWidgets('admin appointment displays live patient details', (
     tester,
   ) async {
@@ -1845,6 +1928,33 @@ class _FakeAdminDataSource implements AdminDataSource {
   String? receptionCheckInAppointmentId;
   String? anonymisedUserId;
   int getUserCalls = 0;
+  int createUserCalls = 0;
+  String? createdUserEmail;
+  String? createdUserStatus;
+
+  @override
+  Future<AdminUser> createUser({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    String? dateOfBirth,
+    String? phone,
+    required String status,
+  }) async {
+    createUserCalls++;
+    createdUserEmail = email;
+    createdUserStatus = status;
+    return AdminUser(
+      id: '10',
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      roles: const ['PATIENT'],
+      status: status,
+      phone: phone,
+    );
+  }
 
   @override
   Future<void> anonymiseUser(String userId) async {
@@ -2651,6 +2761,8 @@ class _FakeUserApiClient extends ApiClient {
   String? lastPatchPath;
   Object? lastPatchBody;
   String? lastGetPath;
+  String? lastPostPath;
+  Object? lastPostBody;
 
   static Future<String?> _noToken() async => null;
 
@@ -2682,6 +2794,23 @@ class _FakeUserApiClient extends ApiClient {
         'id': '8',
         'status': 'ANONYMISED',
         'anonymisedAt': '2026-09-26T03:00:00.000Z',
+      },
+    };
+  }
+
+  @override
+  Future<Object?> post(String path, {Object? body}) async {
+    lastPostPath = path;
+    lastPostBody = body;
+    return {
+      'data': {
+        'id': '10',
+        'email': 'patient@example.com',
+        'firstName': 'Amara',
+        'lastName': 'Silva',
+        'phone': '0771234567',
+        'status': 'ACTIVE',
+        'roles': ['PATIENT'],
       },
     };
   }

@@ -5,6 +5,7 @@ import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_management_forms.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_security_screens.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_user_form_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_doctor_operations_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_clinic_operations_screen.dart';
@@ -454,6 +455,15 @@ class _ManagementPageState extends State<_ManagementPage> {
     );
   }
 
+  Future<void> _openUser() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AdminUserFormScreen(repository: widget.repository),
+      ),
+    );
+    if (changed == true) await widget.onRefresh();
+  }
+
   Future<void> _toggleClinic(AdminClinic clinic, bool active) async {
     try {
       await widget.repository.updateClinic(
@@ -471,7 +481,6 @@ class _ManagementPageState extends State<_ManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final canAdd = _section != _ManagementSection.users;
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
       child: ListView(
@@ -516,17 +525,20 @@ class _ManagementPageState extends State<_ManagementPage> {
                     '${widget.data.clinicCount} care locations',
                 }, style: Theme.of(context).textTheme.titleLarge),
               ),
-              if (canAdd)
-                IconButton.filled(
-                  key: const Key('admin-management-add'),
-                  tooltip: _section == _ManagementSection.doctors
-                      ? 'Add doctor'
-                      : 'Add clinic',
-                  onPressed: () => _section == _ManagementSection.doctors
-                      ? _openDoctor()
-                      : _openClinic(),
-                  icon: const Icon(Icons.add_rounded),
-                ),
+              IconButton.filled(
+                key: const Key('admin-management-add'),
+                tooltip: switch (_section) {
+                  _ManagementSection.users => 'Add user',
+                  _ManagementSection.doctors => 'Add doctor',
+                  _ManagementSection.clinics => 'Add clinic',
+                },
+                onPressed: () => switch (_section) {
+                  _ManagementSection.users => _openUser(),
+                  _ManagementSection.doctors => _openDoctor(),
+                  _ManagementSection.clinics => _openClinic(),
+                },
+                icon: const Icon(Icons.add_rounded),
+              ),
             ],
           ),
           const SizedBox(height: 12),
