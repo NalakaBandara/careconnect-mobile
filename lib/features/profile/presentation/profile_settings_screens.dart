@@ -262,8 +262,70 @@ class _SupportScreenState extends State<SupportScreen> {
   );
 }
 
-class PrivacyScreen extends StatelessWidget {
-  const PrivacyScreen({super.key});
+class PrivacyScreen extends StatefulWidget {
+  const PrivacyScreen({super.key, this.onAnonymiseAccount});
+
+  final Future<void> Function()? onAnonymiseAccount;
+
+  @override
+  State<PrivacyScreen> createState() => _PrivacyScreenState();
+}
+
+class _PrivacyScreenState extends State<PrivacyScreen> {
+  bool _isDeleting = false;
+
+  Future<void> _requestAccountDeletion() async {
+    if (_isDeleting || widget.onAnonymiseAccount == null) return;
+
+    final understood = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently removes your personal details and sign-in access. Your anonymised appointment history will remain for clinic and audit records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep my account'),
+          ),
+          FilledButton(
+            key: const Key('continue-account-deletion'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB84C4C),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    if (understood != true || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _AccountDeletionConfirmationDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await widget.onAnonymiseAccount!();
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your account has been anonymised.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('We could not delete your account. Please try again.'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -271,43 +333,159 @@ class PrivacyScreen extends StatelessWidget {
     body: ListView(
       key: const Key('privacy-screen'),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 34),
-      children: const [
-        Text(
+      children: [
+        const Text(
           'Privacy overview',
           style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900),
         ),
-        SizedBox(height: 8),
-        Text(
+        const SizedBox(height: 8),
+        const Text(
           'A plain-language project summary of how CareConnect is designed to handle account and appointment information.',
           style: TextStyle(color: AppColors.muted, height: 1.5),
         ),
-        SizedBox(height: 26),
-        _LegalSection(
+        const SizedBox(height: 26),
+        const _LegalSection(
           title: 'Information used',
           body:
               'Your account details and appointment information are used to provide booking, clinic communication and check-in features.',
         ),
-        _LegalSection(
+        const _LegalSection(
           title: 'Information shared with clinics',
           body:
               'The selected clinic receives the information required to review and manage your appointment request.',
         ),
-        _LegalSection(
+        const _LegalSection(
           title: 'Public information',
           body:
               'Professional profiles, clinic details, services and general availability may be visible while browsing.',
         ),
-        _LegalSection(
+        const _LegalSection(
           title: 'Your choices',
           body:
-              'You can review personal details and manage appointment requests. Additional privacy controls will be added with the production backend.',
+              'You can review personal details, manage appointment requests, and permanently anonymise your account.',
         ),
-        _InfoNotice(
+        const _InfoNotice(
           text:
               'This screen is a product-design summary, not the final legal policy. A reviewed privacy policy and terms must be supplied before release.',
         ),
+        if (widget.onAnonymiseAccount != null) ...[
+          const SizedBox(height: 30),
+          Container(
+            key: const Key('delete-account-section'),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1EE),
+              border: Border.all(color: const Color(0xFFF2C8C2)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Delete your account',
+                  style: TextStyle(
+                    color: Color(0xFF8F3434),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Your personal details and sign-in access will be permanently removed. Anonymised appointment records will remain for clinic and audit requirements.',
+                  style: TextStyle(
+                    color: Color(0xFF795B58),
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('delete-account-button'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFB84C4C),
+                    ),
+                    onPressed: _isDeleting ? null : _requestAccountDeletion,
+                    icon: _isDeleting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.person_remove_outlined),
+                    label: Text(
+                      _isDeleting ? 'Deleting account…' : 'Delete my account',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     ),
+  );
+}
+
+class _AccountDeletionConfirmationDialog extends StatefulWidget {
+  const _AccountDeletionConfirmationDialog();
+
+  @override
+  State<_AccountDeletionConfirmationDialog> createState() =>
+      _AccountDeletionConfirmationDialogState();
+}
+
+class _AccountDeletionConfirmationDialogState
+    extends State<_AccountDeletionConfirmationDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Final confirmation'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Type DELETE to permanently anonymise your account. This action cannot be undone.',
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            key: const Key('account-deletion-confirmation'),
+            controller: _controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(hintText: 'DELETE'),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context, false),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        key: const Key('confirm-account-deletion'),
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB84C4C)),
+        onPressed: _controller.text.trim() == 'DELETE'
+            ? () => Navigator.pop(context, true)
+            : null,
+        child: const Text('Delete account'),
+      ),
+    ],
   );
 }
 

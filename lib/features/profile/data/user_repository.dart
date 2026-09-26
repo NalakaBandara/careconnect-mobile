@@ -6,6 +6,8 @@ abstract interface class UserDataSource {
   Future<CurrentUser> getCurrentUser();
 
   Future<CurrentUser> updateCurrentUser(CurrentUser user);
+
+  Future<void> anonymiseUser(String userId);
 }
 
 class UserRepository implements UserDataSource {
@@ -32,5 +34,16 @@ class UserRepository implements UserDataSource {
       return CurrentUser.fromJson(data);
     }
     throw const FormatException('Missing user data');
+  }
+
+  @override
+  Future<void> anonymiseUser(String userId) async {
+    final response = await _apiClient.patch(ApiEndpoints.anonymiseUser(userId));
+    if (response case {
+      'data': {'status': final String status},
+    } when status.toUpperCase() == 'ANONYMISED') {
+      return;
+    }
+    throw const FormatException('Missing anonymisation confirmation');
   }
 }

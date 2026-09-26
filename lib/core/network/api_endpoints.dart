@@ -48,4 +48,5 @@ abstract final class ApiEndpoints {
   static String appointmentCheckIn(Object id) => '${appointment(id)}/check-in';
   static String notificationRead(Object id) => '$notifications/$id/read';
   static String user(Object id) => '$users/$id';
+  static String anonymiseUser(Object id) => '${user(id)}?anonymisation=true';
 }

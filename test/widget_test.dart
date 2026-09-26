@@ -1267,6 +1267,77 @@ void main() {
     expect(find.text('Ayesha Silva'), findsOneWidget);
   });
 
+  testWidgets('permanently anonymises a patient after typed confirmation', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeUserDataSource();
+    var loggedOut = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProfileScreen(
+          user: repository.user,
+          repository: repository,
+          onLogout: () async => loggedOut = true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('privacy-tile')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('privacy-tile')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('delete-account-button')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('delete-account-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete your account?'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('continue-account-deletion')));
+    await tester.pumpAndSettle();
+    expect(find.text('Final confirmation'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('confirm-account-deletion')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('account-deletion-confirmation')),
+      'DELETE',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('confirm-account-deletion')));
+    await tester.pumpAndSettle();
+
+    expect(repository.anonymiseCalls, 1);
+    expect(repository.lastAnonymisedUserId, '8');
+    expect(loggedOut, isTrue);
+  });
+
+  test('account anonymisation follows the latest backend contract', () async {
+    final apiClient = _FakeUserApiClient();
+    final repository = UserRepository(apiClient);
+
+    await repository.anonymiseUser('8');
+
+    expect(apiClient.lastPatchPath, '/api/v1/users/8?anonymisation=true');
+    expect(apiClient.lastPatchBody, isNull);
+  });
+
   test('profile update payload follows the backend contract', () {
     final user = CurrentUser(
       id: '8',
@@ -2162,6 +2233,14 @@ class _FakeUserDataSource implements UserDataSource {
   );
   int getCalls = 0;
   int updateCalls = 0;
+  int anonymiseCalls = 0;
+  String? lastAnonymisedUserId;
+
+  @override
+  Future<void> anonymiseUser(String userId) async {
+    anonymiseCalls++;
+    lastAnonymisedUserId = userId;
+  }
 
   @override
   Future<CurrentUser> getCurrentUser() async {
@@ -2174,6 +2253,28 @@ class _FakeUserDataSource implements UserDataSource {
     updateCalls++;
     user = updated;
     return user;
+  }
+}
+
+class _FakeUserApiClient extends ApiClient {
+  _FakeUserApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastPatchPath;
+  Object? lastPatchBody;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> patch(String path, {Object? body}) async {
+    lastPatchPath = path;
+    lastPatchBody = body;
+    return {
+      'data': {
+        'id': '8',
+        'status': 'ANONYMISED',
+        'anonymisedAt': '2026-09-26T03:00:00.000Z',
+      },
+    };
   }
 }
 

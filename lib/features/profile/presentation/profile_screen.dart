@@ -94,6 +94,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     context,
   ).push(MaterialPageRoute<void>(builder: (_) => screen));
 
+  Future<void> _anonymiseAccount() async {
+    await widget.repository!.anonymiseUser(_user.id);
+    await widget.onLogout?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.isGuest) {
@@ -205,7 +210,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 iconBackground: AppColors.mintSoft,
                 title: 'Privacy & legal',
                 caption: 'How CareConnect handles your information',
-                onTap: () => _open(const PrivacyScreen()),
+                onTap: () => _open(
+                  PrivacyScreen(
+                    onAnonymiseAccount: _isPreview ? null : _anonymiseAccount,
+                  ),
+                ),
               ),
               if (widget.onLogout != null) ...[
                 const SizedBox(height: 26),
