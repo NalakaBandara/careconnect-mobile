@@ -17,6 +17,7 @@ import 'package:careconnect_mobile/features/appointments/domain/care_appointment
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointment_detail_screen.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
+import 'package:careconnect_mobile/features/appointments/presentation/cancel_appointment_screen.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/check_in_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:careconnect_mobile/features/booking/data/booking_repository.dart';
@@ -1262,6 +1263,76 @@ void main() {
     expect(appointment.qrCode, startsWith('data:image/png;base64,'));
   });
 
+  test('appointment change rules use the backend UTC start-time rule', () {
+    final appointment = AppointmentsPreviewData.appointments.first;
+    final future = appointment.copyWith(
+      appointmentDate: '2099-01-02',
+      startTime: '09:30:15',
+    );
+    final past = appointment.copyWith(
+      appointmentDate: '2000-01-02',
+      startTime: '09:30',
+    );
+
+    expect(future.scheduledStartUtc, DateTime.utc(2099, 1, 2, 9, 30, 15));
+    expect(future.hasStartedAt(DateTime.utc(2099, 1, 2, 9, 30)), isFalse);
+    expect(future.canChange, isTrue);
+    expect(past.hasStartedAt(DateTime.utc(2000, 1, 2, 9, 31)), isTrue);
+    expect(past.canChange, isFalse);
+  });
+
+  testWidgets('hides change actions after the appointment start time', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final pastAppointment = AppointmentsPreviewData.appointments.first.copyWith(
+      appointmentDate: '2000-01-02',
+      startTime: '09:30',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AppointmentDetailScreen(
+          initialAppointment: pastAppointment,
+          onChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const Key('reschedule-appointment-button')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('cancel-appointment-button')), findsNothing);
+  });
+
+  testWidgets('shows the exact backend cancellation conflict', (tester) async {
+    usePhoneSize(tester);
+    final repository = _CancellationConflictDataSource();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: CancelAppointmentScreen(
+          appointment: repository.appointment,
+          repository: repository,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('confirm-cancellation-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('cancellation-error')), findsOneWidget);
+    expect(
+      find.text(
+        'Cannot cancel an appointment that has already started or passed',
+      ),
+      findsOneWidget,
+    );
+  });
+
   test('parses the backend check-in response contract', () {
     final checkIn = CheckInRecord.fromJson({
       'id': '5',
@@ -2309,6 +2380,24 @@ class _PollingCheckInDataSource extends _FakeAppointmentsDataSource {
       checkedInByUserId: '1',
       method: 'RECEPTION_QR',
       queueNumber: 9,
+    );
+  }
+}
+
+class _CancellationConflictDataSource extends _FakeAppointmentsDataSource {
+  @override
+  Future<CareAppointment> cancelAppointment(String id, {String? reason}) {
+    throw const ApiException(
+      message:
+          'Cannot cancel an appointment that has already started or passed',
+      statusCode: 409,
+      responseBody: {
+        'error': {
+          'code': 'APPOINTMENT_ALREADY_PASSED',
+          'message':
+              'Cannot cancel an appointment that has already started or passed',
+        },
+      },
     );
   }
 }

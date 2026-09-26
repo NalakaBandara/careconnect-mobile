@@ -169,14 +169,39 @@ class CareAppointment {
   final DateTime? updatedAt;
 
   DateTime? get date => DateTime.tryParse(appointmentDate);
+  DateTime? get scheduledStartUtc {
+    final dateMatch = RegExp(
+      r'^(\d{4})-(\d{2})-(\d{2})',
+    ).firstMatch(appointmentDate);
+    final timeMatch = RegExp(
+      r'^(\d{2}):(\d{2})(?::(\d{2}))?',
+    ).firstMatch(startTime);
+    if (dateMatch == null || timeMatch == null) return null;
+    return DateTime.utc(
+      int.parse(dateMatch.group(1)!),
+      int.parse(dateMatch.group(2)!),
+      int.parse(dateMatch.group(3)!),
+      int.parse(timeMatch.group(1)!),
+      int.parse(timeMatch.group(2)!),
+      int.tryParse(timeMatch.group(3) ?? '') ?? 0,
+    );
+  }
+
+  bool hasStartedAt(DateTime now) {
+    final start = scheduledStartUtc;
+    return start != null && start.isBefore(now.toUtc());
+  }
+
+  bool get hasStarted => hasStartedAt(DateTime.now());
   bool get isCancelled => status == AppointmentStatus.cancelled;
   bool get isPast =>
       status == AppointmentStatus.completed ||
       status == AppointmentStatus.cancelled ||
       status == AppointmentStatus.noShow;
   bool get canChange =>
-      status == AppointmentStatus.pending ||
-      status == AppointmentStatus.confirmed;
+      !hasStarted &&
+      (status == AppointmentStatus.pending ||
+          status == AppointmentStatus.confirmed);
   String get reference => bookingReference?.trim().isNotEmpty == true
       ? bookingReference!.trim()
       : 'CC-${id.padLeft(6, '0')}';

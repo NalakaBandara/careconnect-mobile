@@ -1,3 +1,4 @@
+import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
@@ -52,6 +53,12 @@ class _CancelAppointmentScreenState extends State<CancelAppointmentScreen> {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       Navigator.of(context).pop(updated);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _error = error.message;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
