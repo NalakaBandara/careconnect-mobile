@@ -1,5 +1,156 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/core/theme/theme_controller.dart';
 import 'package:flutter/material.dart';
+
+class AppearanceScreen extends StatelessWidget {
+  const AppearanceScreen({required this.controller, super.key});
+
+  final ThemeController controller;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Appearance')),
+    body: ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => ListView(
+        key: const Key('appearance-screen'),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 34),
+        children: [
+          Text(
+            'Choose your look',
+            style: Theme.of(
+              context,
+            ).textTheme.displaySmall?.copyWith(fontSize: 29),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Use your phone setting or choose a CareConnect theme.',
+            style: TextStyle(color: context.careColors.muted, height: 1.45),
+          ),
+          const SizedBox(height: 24),
+          _ThemeModeTile(
+            key: const Key('theme-system'),
+            icon: Icons.brightness_auto_rounded,
+            title: 'System default',
+            caption: 'Follow your phone’s light or dark setting',
+            selected: controller.themeMode == ThemeMode.system,
+            onTap: () => controller.setThemeMode(ThemeMode.system),
+          ),
+          const SizedBox(height: 12),
+          _ThemeModeTile(
+            key: const Key('theme-light'),
+            icon: Icons.light_mode_rounded,
+            title: 'Light',
+            caption: 'A bright, calm healthcare interface',
+            selected: controller.themeMode == ThemeMode.light,
+            onTap: () => controller.setThemeMode(ThemeMode.light),
+          ),
+          const SizedBox(height: 12),
+          _ThemeModeTile(
+            key: const Key('theme-dark'),
+            icon: Icons.dark_mode_rounded,
+            title: 'Dark',
+            caption: 'Comfortable viewing in low light',
+            selected: controller.themeMode == ThemeMode.dark,
+            onTap: () => controller.setThemeMode(ThemeMode.dark),
+          ),
+          const SizedBox(height: 22),
+          _InfoNotice(
+            text:
+                'This preference is stored only on this device and does not require a CareConnect account.',
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ThemeModeTile extends StatelessWidget {
+  const _ThemeModeTile({
+    required this.icon,
+    required this.title,
+    required this.caption,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String caption;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: selected ? context.careColors.softSurface : context.careColors.card,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : context.careColors.border,
+        width: selected ? 1.5 : 1,
+      ),
+    ),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(17),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    caption,
+                    style: TextStyle(
+                      color: context.careColors.muted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: selected
+                  ? Icon(
+                      Icons.check_circle_rounded,
+                      key: const ValueKey('selected'),
+                      color: Theme.of(context).colorScheme.primary,
+                    )
+                  : Icon(
+                      Icons.circle_outlined,
+                      key: const ValueKey('unselected'),
+                      color: context.careColors.border,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 class NotificationPreferencesScreen extends StatefulWidget {
   const NotificationPreferencesScreen({super.key});
@@ -179,7 +330,7 @@ class _SupportScreenState extends State<SupportScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Material(
-              color: Colors.white,
+              color: context.careColors.card,
               borderRadius: BorderRadius.circular(19),
               child: InkWell(
                 onTap: () =>
@@ -188,7 +339,7 @@ class _SupportScreenState extends State<SupportScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(17),
                   decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.careColors.border),
                     borderRadius: BorderRadius.circular(19),
                   ),
                   child: Column(
@@ -213,8 +364,8 @@ class _SupportScreenState extends State<SupportScreen> {
                         const SizedBox(height: 11),
                         Text(
                           faq.$2,
-                          style: const TextStyle(
-                            color: AppColors.muted,
+                          style: TextStyle(
+                            color: context.careColors.muted,
                             height: 1.45,
                           ),
                         ),
@@ -506,8 +657,8 @@ class _PreferenceTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(19),
     ),
     child: Row(
@@ -522,7 +673,7 @@ class _PreferenceTile extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 caption,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(color: context.careColors.muted, fontSize: 11),
               ),
             ],
           ),
@@ -546,8 +697,8 @@ class _InformationTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(17),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(19),
     ),
     child: Row(
@@ -562,7 +713,7 @@ class _InformationTile extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 caption,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(color: context.careColors.muted, fontSize: 11),
               ),
             ],
           ),

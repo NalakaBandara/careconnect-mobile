@@ -318,11 +318,11 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                       _selectedTime = null;
                     }),
                     selectedColor: AppColors.primaryDark,
-                    backgroundColor: Colors.white,
+                    backgroundColor: context.careColors.card,
                     side: BorderSide(
                       color: selected
                           ? AppColors.primaryDark
-                          : AppColors.border,
+                          : context.careColors.border,
                     ),
                     showCheckmark: false,
                     label: Padding(
@@ -333,7 +333,9 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                           Text(
                             item.day,
                             style: TextStyle(
-                              color: selected ? Colors.white : AppColors.ink,
+                              color: selected
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w800,
                               fontSize: 12,
                             ),
@@ -344,7 +346,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                             style: TextStyle(
                               color: selected
                                   ? const Color(0xFFBFE9DE)
-                                  : AppColors.muted,
+                                  : context.careColors.muted,
                               fontSize: 10,
                             ),
                           ),
@@ -678,8 +680,8 @@ class _ServiceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: context.careColors.card,
+        border: Border.all(color: context.careColors.border),
         borderRadius: BorderRadius.circular(19),
       ),
       child: Row(
@@ -704,8 +706,8 @@ class _ServiceCard extends StatelessWidget {
               children: [
                 Text(
                   service.name,
-                  style: const TextStyle(
-                    color: AppColors.ink,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -753,7 +755,9 @@ class _ClinicCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.mintSoft : Colors.white,
+      color: selected
+          ? context.careColors.softSurface
+          : context.careColors.card,
       borderRadius: BorderRadius.circular(19),
       child: InkWell(
         onTap: onTap,
@@ -762,7 +766,7 @@ class _ClinicCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
+              color: selected ? AppColors.primary : context.careColors.border,
             ),
             borderRadius: BorderRadius.circular(19),
           ),
@@ -781,8 +785,8 @@ class _ClinicCard extends StatelessWidget {
                   children: [
                     Text(
                       clinic.name,
-                      style: const TextStyle(
-                        color: AppColors.ink,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

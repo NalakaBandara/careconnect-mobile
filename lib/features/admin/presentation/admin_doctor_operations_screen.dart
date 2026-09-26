@@ -542,8 +542,8 @@ class _ScheduleCard extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -616,8 +616,8 @@ class _MessageCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -635,7 +635,6 @@ class _MessageCard extends StatelessWidget {
 InputDecoration _decoration(String label) => InputDecoration(
   labelText: label,
   filled: true,
-  fillColor: Colors.white,
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
   enabledBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(16),

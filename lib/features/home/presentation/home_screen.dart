@@ -731,7 +731,7 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.careColors.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -1091,8 +1091,8 @@ class _CareCategoriesEmpty extends StatelessWidget {
     key: const Key('home-care-categories-empty'),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -1198,7 +1198,7 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.careColors.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,

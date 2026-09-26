@@ -589,8 +589,8 @@ class _RoleCard extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -648,8 +648,8 @@ class _AuditCard extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -700,8 +700,8 @@ class _NoticeCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(17),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -735,7 +735,6 @@ class _NoticeCard extends StatelessWidget {
 InputDecoration _decoration(String label) => InputDecoration(
   labelText: label,
   filled: true,
-  fillColor: Colors.white,
   isDense: true,
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
   enabledBorder: OutlineInputBorder(

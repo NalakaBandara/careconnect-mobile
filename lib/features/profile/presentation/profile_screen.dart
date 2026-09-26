@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/core/theme/theme_controller.dart';
 import 'package:careconnect_mobile/features/profile/data/profile_preview_data.dart';
 import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
 import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
@@ -190,6 +191,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 caption: 'Appointment reminders and updates',
                 onTap: () => _open(const NotificationPreferencesScreen()),
               ),
+              const SizedBox(height: 10),
+              _ProfileTile(
+                key: const Key('appearance-tile'),
+                icon: Icons.palette_outlined,
+                iconColor: const Color(0xFF7957C8),
+                iconBackground: AppColors.lilacSoft,
+                title: 'Appearance',
+                caption: 'System, light or dark mode',
+                onTap: () => _open(
+                  AppearanceScreen(
+                    controller: ThemeControllerScope.of(context),
+                  ),
+                ),
+              ),
               const SizedBox(height: 26),
               const _SectionLabel('SUPPORT & INFORMATION'),
               const SizedBox(height: 10),
@@ -310,6 +325,22 @@ class _GuestProfileView extends StatelessWidget {
             label: const Text('Create account'),
           ),
           const SizedBox(height: 28),
+          _ProfileTile(
+            key: const Key('guest-appearance-tile'),
+            icon: Icons.palette_outlined,
+            iconColor: const Color(0xFF7957C8),
+            iconBackground: AppColors.lilacSoft,
+            title: 'Appearance',
+            caption: 'System, light or dark mode',
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) => AppearanceScreen(
+                  controller: ThemeControllerScope.of(context),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
           const _SectionLabel('WITH AN ACCOUNT'),
           const SizedBox(height: 12),
           const _GuestBenefit(
@@ -342,8 +373,8 @@ class _GuestBenefit extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -519,7 +550,7 @@ class _ProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white,
+    color: context.careColors.card,
     borderRadius: BorderRadius.circular(19),
     child: InkWell(
       onTap: onTap,
@@ -527,7 +558,7 @@ class _ProfileTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.careColors.border),
           borderRadius: BorderRadius.circular(19),
         ),
         child: Row(
@@ -553,15 +584,15 @@ class _ProfileTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     caption,
-                    style: const TextStyle(
-                      color: AppColors.muted,
+                    style: TextStyle(
+                      color: context.careColors.muted,
                       fontSize: 11,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            Icon(Icons.chevron_right_rounded, color: context.careColors.muted),
           ],
         ),
       ),

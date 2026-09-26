@@ -1,6 +1,7 @@
 import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/core/theme/theme_controller.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_management_forms.dart';
@@ -13,6 +14,7 @@ import 'package:careconnect_mobile/features/admin/presentation/admin_catalog_not
 import 'package:careconnect_mobile/features/admin/presentation/admin_qr_check_in_screen.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
+import 'package:careconnect_mobile/features/profile/presentation/profile_settings_screens.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
@@ -321,8 +323,8 @@ class _MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: context.careColors.card,
+        border: Border.all(color: context.careColors.border),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -339,10 +341,10 @@ class _MetricCard extends StatelessWidget {
           ),
           Text(
             '$value',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 27,
               fontWeight: FontWeight.w800,
-              color: AppColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           Text(
@@ -603,8 +605,8 @@ class _DoctorAdminCard extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -682,8 +684,8 @@ class _ClinicAdminCard extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
@@ -756,8 +758,8 @@ class _UserCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.border),
+          color: context.careColors.card,
+          border: Border.all(color: context.careColors.border),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
@@ -893,7 +895,7 @@ class _AppointmentsPageState extends State<_AppointmentsPage> {
                       icon: const Icon(Icons.close_rounded),
                     ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: context.careColors.card,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(17),
                 borderSide: BorderSide.none,
@@ -983,8 +985,8 @@ class _AppointmentCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.border),
+          color: context.careColors.card,
+          border: Border.all(color: context.careColors.border),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -1194,6 +1196,20 @@ class _AdminAccountPage extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _AdminMenuTile(
+          key: const Key('admin-appearance-tile'),
+          icon: Icons.palette_outlined,
+          title: 'Appearance',
+          subtitle: 'Use system, light or dark mode',
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => AppearanceScreen(
+                controller: ThemeControllerScope.of(context),
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 20),
         OutlinedButton.icon(
           key: const Key('admin-logout'),
@@ -1222,10 +1238,10 @@ class _AdminMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white,
+    color: context.careColors.card,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(18),
-      side: const BorderSide(color: AppColors.border),
+      side: BorderSide(color: context.careColors.border),
     ),
     child: ListTile(
       onTap: onTap,
@@ -1254,8 +1270,8 @@ class _EmptyCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Text(

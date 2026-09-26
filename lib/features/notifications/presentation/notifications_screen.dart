@@ -422,14 +422,14 @@ class NotificationDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.border),
+              color: context.careColors.card,
+              border: Border.all(color: context.careColors.border),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Text(
               notification.message,
-              style: const TextStyle(
-                color: AppColors.ink,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 height: 1.55,
               ),
@@ -460,7 +460,9 @@ class _NotificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = _styleFor(notification.type);
     return Material(
-      color: notification.isRead ? Colors.white : const Color(0xFFF0FAF7),
+      color: notification.isRead
+          ? context.careColors.card
+          : context.careColors.softSurface,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
@@ -470,7 +472,7 @@ class _NotificationCard extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(
               color: notification.isRead
-                  ? AppColors.border
+                  ? context.careColors.border
                   : AppColors.accent.withValues(alpha: 0.55),
             ),
             borderRadius: BorderRadius.circular(22),
@@ -499,7 +501,7 @@ class _NotificationCard extends StatelessWidget {
                           child: Text(
                             notification.title,
                             style: TextStyle(
-                              color: AppColors.ink,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 15,
                               fontWeight: notification.isRead
                                   ? FontWeight.w700
@@ -525,8 +527,8 @@ class _NotificationCard extends StatelessWidget {
                       notification.message,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        color: context.careColors.muted,
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -544,9 +546,9 @@ class _NotificationCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.muted,
+                color: context.careColors.muted,
                 size: 20,
               ),
             ],
@@ -570,7 +572,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: selected ? AppColors.primary : Colors.white,
+    color: selected ? AppColors.primary : context.careColors.card,
     borderRadius: BorderRadius.circular(99),
     child: InkWell(
       onTap: onTap,
@@ -579,14 +581,14 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
         decoration: BoxDecoration(
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
+            color: selected ? AppColors.primary : context.careColors.border,
           ),
           borderRadius: BorderRadius.circular(99),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.muted,
+            color: selected ? Colors.white : context.careColors.muted,
             fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
@@ -652,8 +654,8 @@ class _InboxMessage extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.ink,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),

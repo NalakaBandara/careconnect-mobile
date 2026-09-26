@@ -196,9 +196,9 @@ class _MainShellState extends State<MainShell> {
         minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.careColors.card,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.careColors.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x16063F3C),
@@ -212,8 +212,8 @@ class _MainShellState extends State<MainShell> {
             height: 68,
             selectedIndex: _selectedIndex,
             onDestinationSelected: _select,
-            backgroundColor: Colors.white,
-            indicatorColor: AppColors.mintSoft,
+            backgroundColor: context.careColors.card,
+            indicatorColor: Theme.of(context).navigationBarTheme.indicatorColor,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: const [
               NavigationDestination(

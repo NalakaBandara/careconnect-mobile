@@ -215,8 +215,8 @@ class _StatusHistorySection extends StatelessWidget {
             key: const Key('patient-status-history-list'),
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.border),
+              color: context.careColors.card,
+              border: Border.all(color: context.careColors.border),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Column(
@@ -492,8 +492,8 @@ class _InformationCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(19),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(22),
     ),
     child: Column(

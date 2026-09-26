@@ -251,7 +251,7 @@ class _FindCareScreenState extends State<FindCareScreen> {
                               icon: const Icon(Icons.close_rounded),
                             ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: context.careColors.card,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(18),
                         borderSide: const BorderSide(color: AppColors.border),
@@ -301,8 +301,8 @@ class _FindCareScreenState extends State<FindCareScreen> {
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: AppColors.border),
+                          backgroundColor: context.careColors.card,
+                          side: BorderSide(color: context.careColors.border),
                           showCheckmark: false,
                         );
                       },
@@ -387,7 +387,7 @@ class _ProfessionalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.careColors.card,
       borderRadius: BorderRadius.circular(23),
       child: InkWell(
         key: ValueKey('professional-${professional.id}'),
@@ -433,8 +433,10 @@ class _ProfessionalCard extends StatelessWidget {
                               child: Text(
                                 professional.displayName,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.ink,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -526,13 +528,13 @@ class _ProfessionalCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.careColors.softSurface,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Text(
+                child: Text(
                   'View profile',
                   style: TextStyle(
-                    color: AppColors.ink,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),
@@ -596,8 +598,8 @@ class _EmptyResults extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 42),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: context.careColors.card,
+        border: Border.all(color: context.careColors.border),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -612,10 +614,10 @@ class _EmptyResults extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Try a different search',
             style: TextStyle(
-              color: AppColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -666,8 +668,8 @@ class _ErrorResults extends StatelessWidget {
     key: const Key('find-care-error'),
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 38),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(24),
     ),
     child: Column(
@@ -682,10 +684,10 @@ class _ErrorResults extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        const Text(
+        Text(
           'Care directory unavailable',
           style: TextStyle(
-            color: AppColors.ink,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w800,
           ),

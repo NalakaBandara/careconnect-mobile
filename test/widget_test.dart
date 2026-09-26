@@ -4,6 +4,7 @@ import 'package:careconnect_mobile/core/network/api_client.dart';
 import 'package:careconnect_mobile/core/network/api_exception.dart';
 import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/core/theme/theme_controller.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
@@ -40,6 +41,7 @@ import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_s
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
+import 'package:careconnect_mobile/features/profile/presentation/profile_settings_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,6 +68,57 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('CARE, YOUR WAY'), findsOneWidget);
+  });
+
+  testWidgets('restores and changes the saved app theme', (tester) async {
+    final store = _FakeThemePreferenceStore('dark');
+    final controller = ThemeController(store: store);
+    await controller.load();
+
+    await tester.pumpWidget(CareConnectApp(themeController: controller));
+    await tester.pump();
+
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+
+    await controller.setThemeMode(ThemeMode.light);
+    await tester.pump();
+
+    expect(store.value, 'light');
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
+  });
+
+  testWidgets('appearance screen offers system light and dark modes', (
+    tester,
+  ) async {
+    final store = _FakeThemePreferenceStore();
+    final controller = ThemeController(store: store);
+
+    await tester.pumpWidget(
+      ThemeControllerScope(
+        controller: controller,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          home: AppearanceScreen(controller: controller),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('theme-system')), findsOneWidget);
+    expect(find.byKey(const Key('theme-light')), findsOneWidget);
+    expect(find.byKey(const Key('theme-dark')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('theme-dark')));
+    await tester.pump();
+
+    expect(controller.themeMode, ThemeMode.dark);
+    expect(store.value, 'dark');
   });
 
   test('API logs redact credentials and personal fields', () {
@@ -1919,6 +1972,18 @@ void main() {
     expect(repository.receptionCheckInAppointmentId, '4821');
     expect(find.text('7'), findsOneWidget);
   });
+}
+
+class _FakeThemePreferenceStore implements ThemePreferenceStore {
+  _FakeThemePreferenceStore([this.value]);
+
+  String? value;
+
+  @override
+  Future<String?> read() async => value;
+
+  @override
+  Future<void> write(String value) async => this.value = value;
 }
 
 class _FakeAdminDataSource implements AdminDataSource {

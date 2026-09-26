@@ -488,7 +488,6 @@ class _ChoiceSection extends StatelessWidget {
 InputDecoration _decoration(String label) => InputDecoration(
   labelText: label,
   filled: true,
-  fillColor: Colors.white,
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
   enabledBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(16),

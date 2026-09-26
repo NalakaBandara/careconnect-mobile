@@ -1,4 +1,5 @@
 import 'package:careconnect_mobile/core/network/api_exception.dart';
+import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/auth/data/auth_service.dart';
 import 'package:careconnect_mobile/features/auth/domain/auth_session.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
@@ -42,12 +43,6 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
 
   static const Color primary = Color(0xFF00A79D);
   static const Color primaryDark = Color(0xFF008A82);
-
-  static const Color textPrimary = Color(0xFF102B32);
-  static const Color textSecondary = Color(0xFF82969C);
-
-  static const Color borderColor = Color(0xFFDDE9E9);
-  static const Color background = Color(0xFFFAFCFC);
 
   // ============================================================
   // DISPOSE
@@ -198,6 +193,10 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
   @override
   Widget build(BuildContext context) {
     final signUp = widget.signUp;
+    final textPrimary = Theme.of(context).colorScheme.onSurface;
+    final textSecondary = context.careColors.muted;
+    final borderColor = context.careColors.border;
+    final background = Theme.of(context).colorScheme.surface;
 
     return Scaffold(
       backgroundColor: background,
@@ -229,7 +228,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                       minWidth: 44,
                       minHeight: 44,
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_rounded,
                       size: 26,
                       color: textPrimary,
@@ -252,7 +251,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             RichText(
-                              text: const TextSpan(
+                              text: TextSpan(
                                 style: TextStyle(
                                   fontSize: 21,
                                   fontWeight: FontWeight.w800,
@@ -273,7 +272,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
 
                             const SizedBox(height: 2),
 
-                            const Text(
+                            Text(
                               'Your Health, Our Priority',
                               style: TextStyle(
                                 color: textSecondary,
@@ -294,7 +293,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                   // ---------------------------------------------
                   RichText(
                     text: TextSpan(
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: textPrimary,
                         fontSize: 28,
                         height: 1.12,
@@ -326,7 +325,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                     signUp
                         ? 'Start your care journey and book appointments with ease.'
                         : 'Sign in to manage appointments and keep your care organized.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: textSecondary,
                       fontSize: 13.5,
                       height: 1.4,
@@ -553,7 +552,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                           color: const Color(0xFFE9F8F6),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             _PasswordCheckIcon(),
 
@@ -625,7 +624,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
 
                           const SizedBox(width: 4),
 
-                          const Expanded(
+                          Expanded(
                             child: Padding(
                               padding: EdgeInsets.only(top: 6),
                               child: Text.rich(
@@ -680,7 +679,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: background,
                 border: Border(top: BorderSide(color: borderColor, width: 0.8)),
               ),
@@ -745,7 +744,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.shield_outlined,
                         size: 12,
                         color: textSecondary,
@@ -759,7 +758,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                               ? 'Your password is sent only to the CareConnect API.'
                               : 'Your session is encrypted on this device.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: textSecondary,
                             fontSize: 9.8,
                             fontWeight: FontWeight.w500,
@@ -857,8 +856,8 @@ class _ModernField extends StatelessWidget {
 
       cursorColor: _AuthFormScreenState.primary,
 
-      style: const TextStyle(
-        color: _AuthFormScreenState.textPrimary,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
@@ -866,8 +865,8 @@ class _ModernField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
 
-        hintStyle: const TextStyle(
-          color: _AuthFormScreenState.textSecondary,
+        hintStyle: TextStyle(
+          color: context.careColors.muted,
           fontSize: 13.5,
           fontWeight: FontWeight.w500,
         ),
@@ -875,14 +874,12 @@ class _ModernField extends StatelessWidget {
         prefixIcon: Icon(
           icon,
           size: 20,
-          color: _AuthFormScreenState.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
 
         suffixIcon: suffixIcon,
 
         filled: true,
-
-        fillColor: Colors.white,
 
         isDense: true,
 
@@ -893,7 +890,7 @@ class _ModernField extends StatelessWidget {
 
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: _AuthFormScreenState.borderColor),
+          borderSide: BorderSide(color: context.careColors.border),
         ),
 
         focusedBorder: OutlineInputBorder(
@@ -935,21 +932,21 @@ class _PhoneField extends StatelessWidget {
       height: 56,
 
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.careColors.card,
 
         borderRadius: BorderRadius.circular(16),
 
-        border: Border.all(color: _AuthFormScreenState.borderColor),
+        border: Border.all(color: context.careColors.border),
       ),
 
       child: Row(
         children: [
           const SizedBox(width: 15),
 
-          const Icon(
+          Icon(
             Icons.phone_outlined,
             size: 20,
-            color: _AuthFormScreenState.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
 
           const SizedBox(width: 12),
@@ -964,10 +961,10 @@ class _PhoneField extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
 
-            child: const Text(
+            child: Text(
               '+94',
               style: TextStyle(
-                color: _AuthFormScreenState.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -976,11 +973,7 @@ class _PhoneField extends StatelessWidget {
 
           const SizedBox(width: 10),
 
-          Container(
-            width: 1,
-            height: 24,
-            color: _AuthFormScreenState.borderColor,
-          ),
+          Container(width: 1, height: 24, color: context.careColors.border),
 
           const SizedBox(width: 10),
 
@@ -998,13 +991,13 @@ class _PhoneField extends StatelessWidget {
 
               cursorColor: _AuthFormScreenState.primary,
 
-              style: const TextStyle(
-                color: _AuthFormScreenState.textPrimary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
 
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
 
                 enabledBorder: InputBorder.none,
@@ -1018,11 +1011,11 @@ class _PhoneField extends StatelessWidget {
                 hintText: '77 123 4567',
 
                 hintStyle: TextStyle(
-                  color: _AuthFormScreenState.textSecondary,
+                  color: context.careColors.muted,
                   fontSize: 13.5,
                 ),
 
-                contentPadding: EdgeInsets.symmetric(vertical: 17),
+                contentPadding: const EdgeInsets.symmetric(vertical: 17),
               ),
             ),
           ),

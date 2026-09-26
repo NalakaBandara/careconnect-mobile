@@ -88,7 +88,7 @@ class AppointmentCard extends StatelessWidget {
     final date = appointment.date;
     final colors = appointmentStatusColors(appointment.status);
     return Material(
-      color: Colors.white,
+      color: context.careColors.card,
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         key: ValueKey('appointment-card-${appointment.id}'),
@@ -142,8 +142,8 @@ class AppointmentCard extends StatelessWidget {
                       children: [
                         Text(
                           appointment.doctor.displayName,
-                          style: const TextStyle(
-                            color: AppColors.ink,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                           ),

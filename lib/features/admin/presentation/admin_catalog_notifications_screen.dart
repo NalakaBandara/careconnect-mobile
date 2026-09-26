@@ -593,8 +593,8 @@ class _CatalogCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: AppColors.border),
+      color: context.careColors.card,
+      border: Border.all(color: context.careColors.border),
       borderRadius: BorderRadius.circular(18),
     ),
     child: ListTile(
@@ -621,7 +621,6 @@ class _CatalogCard extends StatelessWidget {
 InputDecoration _decoration(String label) => InputDecoration(
   labelText: label,
   filled: true,
-  fillColor: Colors.white,
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
   enabledBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(16),
