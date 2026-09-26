@@ -21,6 +21,29 @@ access token is stored using the platform's encrypted secure storage. Never add
 a server JWT secret, password, or access token to this repository or to a
 `--dart-define` value.
 
+## Live appointment journey
+
+The opt-in live test verifies the complete deployed API journey: patient
+booking, admin confirmation, backend QR generation, reception check-in,
+patient check-in visibility, completion, and status history. It creates and
+completes a real appointment, so use CareConnect test accounts only.
+
+Keep credentials outside source control. Export these values in the current
+terminal without adding them to a file in this repository:
+
+```bash
+export CARECONNECT_PATIENT_EMAIL='...'
+export CARECONNECT_PATIENT_PASSWORD='...'
+export CARECONNECT_ADMIN_EMAIL='...'
+export CARECONNECT_ADMIN_PASSWORD='...'
+export CARECONNECT_RUN_LIVE_E2E=true
+flutter test test/live_api_journey_test.dart
+```
+
+Normal `flutter test` runs skip this mutation-enabled test unless the explicit
+flag and credentials are present. If a run fails after creating an
+appointment, the test attempts to cancel that appointment before exiting.
+
 ## Debug API logs
 
 API requests are printed automatically in debug builds:
