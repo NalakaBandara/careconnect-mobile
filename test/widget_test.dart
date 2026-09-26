@@ -1035,6 +1035,36 @@ void main() {
     );
   });
 
+  testWidgets('shows no fake QR and refreshes until the real QR is available', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _QrRefreshDataSource();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: CheckInScreen(
+          appointment: repository.appointment,
+          repository: repository,
+          checkInPollInterval: const Duration(hours: 1),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('appointment-qr-unavailable')), findsOneWidget);
+    expect(find.text('QR PENDING'), findsOneWidget);
+    expect(find.byKey(const Key('appointment-qr-code')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('refresh-appointment-qr')));
+    await tester.pumpAndSettle();
+
+    expect(repository.detailCalls, 2);
+    expect(find.byKey(const Key('appointment-qr-code')), findsOneWidget);
+    expect(find.byKey(const Key('appointment-qr-unavailable')), findsNothing);
+  });
+
   testWidgets('patient check-in status updates after reception scans the QR', (
     tester,
   ) async {
@@ -2140,6 +2170,23 @@ class _PollingCheckInDataSource extends _FakeAppointmentsDataSource {
       method: 'RECEPTION_QR',
       queueNumber: 9,
     );
+  }
+}
+
+class _QrRefreshDataSource extends _FakeAppointmentsDataSource {
+  static const _qrCode =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+  @override
+  Future<CareAppointment> getAppointment(String id) async {
+    detailCalls++;
+    if (detailCalls >= 2) appointment = appointment.copyWith(qrCode: _qrCode);
+    return appointment;
+  }
+
+  @override
+  Future<CheckInRecord> getCheckIn(String appointmentId) async {
+    throw const ApiException(message: 'Check-in not found', statusCode: 404);
   }
 }
 

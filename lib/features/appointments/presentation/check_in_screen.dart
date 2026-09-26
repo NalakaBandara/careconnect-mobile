@@ -27,23 +27,30 @@ class CheckInScreen extends StatefulWidget {
 }
 
 class _CheckInScreenState extends State<CheckInScreen> {
+  late CareAppointment _appointment;
   CheckInRecord? _record;
   bool _isLoading = false;
-  bool _requestInFlight = false;
+  bool _checkInRequestInFlight = false;
+  bool _appointmentRequestInFlight = false;
+  bool _isRefreshingAppointment = false;
   String? _error;
+  String? _qrRefreshError;
   Timer? _pollTimer;
 
-  CareAppointment get appointment => widget.appointment;
+  CareAppointment get appointment => _appointment;
   bool get _hasQrCode => appointment.qrCode?.trim().isNotEmpty == true;
 
   @override
   void initState() {
     super.initState();
+    _appointment = widget.appointment;
     if (widget.repository != null) {
       unawaited(_loadCheckIn(showLoading: true));
+      if (!_hasQrCode) unawaited(_refreshAppointment());
       _pollTimer = Timer.periodic(widget.checkInPollInterval, (_) {
-        if (_record == null && !_requestInFlight) {
+        if (_record == null) {
           unawaited(_loadCheckIn());
+          if (!_hasQrCode) unawaited(_refreshAppointment());
         }
       });
     }
@@ -56,8 +63,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   Future<void> _loadCheckIn({bool showLoading = false}) async {
-    if (_requestInFlight || widget.repository == null) return;
-    _requestInFlight = true;
+    if (_checkInRequestInFlight || widget.repository == null) return;
+    _checkInRequestInFlight = true;
     if (showLoading) {
       setState(() {
         _isLoading = true;
@@ -83,8 +90,38 @@ class _CheckInScreenState extends State<CheckInScreen> {
         setState(() => _error = 'Check-in status could not be loaded.');
       }
     } finally {
-      _requestInFlight = false;
+      _checkInRequestInFlight = false;
       if (mounted && showLoading) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _refreshAppointment({bool showLoading = false}) async {
+    if (_appointmentRequestInFlight || widget.repository == null) return;
+    _appointmentRequestInFlight = true;
+    if (showLoading && mounted) {
+      setState(() {
+        _isRefreshingAppointment = true;
+        _qrRefreshError = null;
+      });
+    }
+    try {
+      final refreshed = await widget.repository!.getAppointment(appointment.id);
+      if (!mounted) return;
+      setState(() {
+        _appointment = refreshed;
+        _qrRefreshError = null;
+      });
+    } catch (_) {
+      if (!mounted || !showLoading) return;
+      setState(() {
+        _qrRefreshError =
+            'The latest QR status could not be loaded. Please try again.';
+      });
+    } finally {
+      _appointmentRequestInFlight = false;
+      if (mounted && showLoading) {
+        setState(() => _isRefreshingAppointment = false);
+      }
     }
   }
 
@@ -130,9 +167,20 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 _QrBadge(available: _hasQrCode),
                 const SizedBox(height: 18),
                 if (_hasQrCode)
-                  _AppointmentQrCode(dataUrl: appointment.qrCode!)
+                  _AppointmentQrCode(
+                    dataUrl: appointment.qrCode!,
+                    onRefresh: widget.repository == null
+                        ? null
+                        : () => _refreshAppointment(showLoading: true),
+                  )
                 else
-                  _LockedCode(reference: appointment.reference),
+                  _QrUnavailable(
+                    isRefreshing: _isRefreshingAppointment,
+                    error: _qrRefreshError,
+                    onRefresh: widget.repository == null
+                        ? null
+                        : () => _refreshAppointment(showLoading: true),
+                  ),
                 const SizedBox(height: 18),
                 const Text(
                   'Appointment reference',
@@ -300,7 +348,7 @@ class _QrBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(99),
     ),
     child: Text(
-      available ? 'APPOINTMENT QR' : 'CHECK-IN PREVIEW',
+      available ? 'APPOINTMENT QR' : 'QR PENDING',
       style: const TextStyle(
         color: AppColors.primary,
         fontSize: 10,
@@ -312,15 +360,16 @@ class _QrBadge extends StatelessWidget {
 }
 
 class _AppointmentQrCode extends StatelessWidget {
-  const _AppointmentQrCode({required this.dataUrl});
+  const _AppointmentQrCode({required this.dataUrl, this.onRefresh});
 
   final String dataUrl;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final bytes = _decodeDataUrl(dataUrl);
     if (bytes == null) {
-      return const _QrLoadError();
+      return _QrLoadError(onRefresh: onRefresh);
     }
 
     return Container(
@@ -345,6 +394,7 @@ class _AppointmentQrCode extends StatelessWidget {
         filterQuality: FilterQuality.none,
         gaplessPlayback: true,
         semanticLabel: 'Appointment check-in QR code',
+        errorBuilder: (_, _, _) => _QrLoadError(onRefresh: onRefresh),
       ),
     );
   }
@@ -363,7 +413,9 @@ class _AppointmentQrCode extends StatelessWidget {
 }
 
 class _QrLoadError extends StatelessWidget {
-  const _QrLoadError();
+  const _QrLoadError({this.onRefresh});
+
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -374,26 +426,45 @@ class _QrLoadError extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(24),
     ),
-    child: const Column(
+    child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.broken_image_outlined, color: AppColors.muted, size: 34),
-        SizedBox(height: 10),
-        Text('QR code unavailable', style: TextStyle(color: AppColors.muted)),
+        const Icon(
+          Icons.broken_image_outlined,
+          color: AppColors.muted,
+          size: 34,
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'QR code unavailable',
+          style: TextStyle(color: AppColors.muted),
+        ),
+        if (onRefresh != null) ...[
+          const SizedBox(height: 10),
+          TextButton(onPressed: onRefresh, child: const Text('Refresh QR')),
+        ],
       ],
     ),
   );
 }
 
-class _LockedCode extends StatelessWidget {
-  const _LockedCode({required this.reference});
-  final String reference;
+class _QrUnavailable extends StatelessWidget {
+  const _QrUnavailable({
+    required this.isRefreshing,
+    required this.error,
+    this.onRefresh,
+  });
+
+  final bool isRefreshing;
+  final String? error;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) => Container(
+    key: const Key('appointment-qr-unavailable'),
     width: 210,
-    height: 210,
-    padding: const EdgeInsets.all(14),
+    constraints: const BoxConstraints(minHeight: 210),
+    padding: const EdgeInsets.all(22),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(24),
@@ -405,66 +476,56 @@ class _LockedCode extends StatelessWidget {
         ),
       ],
     ),
-    child: Stack(
-      fit: StackFit.expand,
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        CustomPaint(painter: _PreviewCodePainter(reference.hashCode)),
-        Center(
-          child: Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 10),
-              ],
-            ),
-            child: const Icon(Icons.lock_rounded, color: AppColors.primary),
+        Container(
+          width: 62,
+          height: 62,
+          decoration: const BoxDecoration(
+            color: AppColors.mintSoft,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.qr_code_2_rounded,
+            color: AppColors.primary,
+            size: 30,
           ),
         ),
+        const SizedBox(height: 14),
+        const Text(
+          'QR code is not available yet',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          error ?? 'We will refresh this appointment automatically.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: error == null ? AppColors.muted : const Color(0xFFB84C4C),
+            fontSize: 11,
+            height: 1.35,
+          ),
+        ),
+        if (onRefresh != null) ...[
+          const SizedBox(height: 12),
+          TextButton.icon(
+            key: const Key('refresh-appointment-qr'),
+            onPressed: isRefreshing ? null : onRefresh,
+            icon: isRefreshing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 18),
+            label: Text(isRefreshing ? 'Refreshing…' : 'Refresh QR'),
+          ),
+        ],
       ],
     ),
   );
-}
-
-class _PreviewCodePainter extends CustomPainter {
-  const _PreviewCodePainter(this.seed);
-  final int seed;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const cells = 17;
-    final cell = size.width / cells;
-    final paint = Paint()..color = AppColors.ink.withValues(alpha: 0.72);
-    for (var row = 0; row < cells; row++) {
-      for (var column = 0; column < cells; column++) {
-        final corner =
-            (row < 5 && column < 5) ||
-            (row < 5 && column >= cells - 5) ||
-            (row >= cells - 5 && column < 5);
-        final value = ((row * 31 + column * 17 + seed) & 3) == 0;
-        if (corner || value) {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromLTWH(
-                column * cell + 1,
-                row * cell + 1,
-                cell - 2,
-                cell - 2,
-              ),
-              const Radius.circular(1.5),
-            ),
-            paint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PreviewCodePainter oldDelegate) =>
-      oldDelegate.seed != seed;
 }
 
 class _VisitSummary extends StatelessWidget {
