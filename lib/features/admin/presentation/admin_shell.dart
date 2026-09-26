@@ -104,6 +104,7 @@ class _AdminShellState extends State<AdminShell> {
                   onRefresh: _refresh,
                 ),
                 _ManagementPage(
+                  currentAdminId: widget.user.id,
                   data: data,
                   repository: _repository,
                   onRefresh: _refresh,
@@ -360,11 +361,13 @@ enum _ManagementSection { users, doctors, clinics }
 
 class _ManagementPage extends StatefulWidget {
   const _ManagementPage({
+    required this.currentAdminId,
     required this.data,
     required this.repository,
     required this.onRefresh,
   });
 
+  final String currentAdminId;
   final AdminDashboardSnapshot data;
   final AdminDataSource repository;
   final Future<void> Function() onRefresh;
@@ -443,6 +446,7 @@ class _ManagementPageState extends State<_ManagementPage> {
       MaterialPageRoute(
         builder: (_) => AdminUserAccessScreen(
           user: user,
+          currentAdminId: widget.currentAdminId,
           repository: widget.repository,
           onChanged: widget.onRefresh,
         ),

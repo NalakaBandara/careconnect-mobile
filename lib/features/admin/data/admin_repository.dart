@@ -63,6 +63,8 @@ abstract interface class AdminDataSource {
 
   Future<void> assignUserRole(String userId, String roleId);
 
+  Future<void> anonymiseUser(String userId);
+
   Future<List<AdminAuditLog>> getAuditLogs({
     String? userId,
     String? entityType,
@@ -314,6 +316,17 @@ class AdminRepository implements AdminDataSource {
       ApiEndpoints.userRoles,
       body: {'userId': userId, 'roleId': roleId},
     );
+  }
+
+  @override
+  Future<void> anonymiseUser(String userId) async {
+    final response = await _client.patch(ApiEndpoints.anonymiseUser(userId));
+    if (response case {
+      'data': {'status': final String status},
+    } when status.toUpperCase() == 'ANONYMISED') {
+      return;
+    }
+    throw const FormatException('Missing anonymisation confirmation');
   }
 
   @override

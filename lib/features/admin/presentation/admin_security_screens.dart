@@ -7,12 +7,14 @@ import 'package:flutter/material.dart';
 class AdminUserAccessScreen extends StatefulWidget {
   const AdminUserAccessScreen({
     required this.user,
+    required this.currentAdminId,
     required this.repository,
     required this.onChanged,
     super.key,
   });
 
   final AdminUser user;
+  final String currentAdminId;
   final AdminDataSource repository;
   final Future<void> Function() onChanged;
 
@@ -24,6 +26,10 @@ class _AdminUserAccessScreenState extends State<AdminUserAccessScreen> {
   late Future<List<AdminRole>> _roles;
   late final Set<String> _assignedRoles;
   String? _assigningRole;
+  bool _anonymising = false;
+
+  bool get _isAnonymised => widget.user.status.toUpperCase() == 'ANONYMISED';
+  bool get _isCurrentAdmin => widget.user.id == widget.currentAdminId;
 
   @override
   void initState() {
@@ -75,6 +81,54 @@ class _AdminUserAccessScreenState extends State<AdminUserAccessScreen> {
     }
   }
 
+  Future<void> _anonymise() async {
+    if (_anonymising || _isAnonymised || _isCurrentAdmin) return;
+    final understood = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Anonymise this user?'),
+        content: Text(
+          '${widget.user.displayName} will permanently lose sign-in access. Personal details will be removed, while anonymised appointment and audit records remain.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('continue-admin-anonymisation'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB84C4C),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    if (understood != true || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _AdminAnonymisationConfirmationDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _anonymising = true);
+    try {
+      await widget.repository.anonymiseUser(widget.user.id);
+      await widget.onChanged();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } on ApiException catch (error) {
+      if (mounted) _showError(error.message);
+    } catch (_) {
+      if (mounted) _showError('The user could not be anonymised.');
+    } finally {
+      if (mounted) setState(() => _anonymising = false);
+    }
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
@@ -122,8 +176,9 @@ class _AdminUserAccessScreenState extends State<AdminUserAccessScreen> {
                   ? Icons.check_circle_outline_rounded
                   : Icons.block_rounded,
               title: 'Account status: ${_roleLabel(widget.user.status)}',
-              message:
-                  'Status changes are disabled until the backend provides a safe status-only endpoint that preserves private profile fields.',
+              message: _isAnonymised
+                  ? 'This account no longer has personal details or sign-in access.'
+                  : 'Status changes are disabled until the backend provides a safe status-only endpoint that preserves private profile fields.',
             ),
             const SizedBox(height: 24),
             Text('Roles', style: Theme.of(context).textTheme.titleLarge),
@@ -174,11 +229,144 @@ class _AdminUserAccessScreenState extends State<AdminUserAccessScreen> {
                 );
               },
             ),
+            if (!_isAnonymised) ...[
+              const SizedBox(height: 30),
+              _AdminDangerZone(
+                isCurrentAdmin: _isCurrentAdmin,
+                isBusy: _anonymising,
+                onAnonymise: _anonymise,
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+class _AdminDangerZone extends StatelessWidget {
+  const _AdminDangerZone({
+    required this.isCurrentAdmin,
+    required this.isBusy,
+    required this.onAnonymise,
+  });
+
+  final bool isCurrentAdmin;
+  final bool isBusy;
+  final VoidCallback onAnonymise;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('admin-anonymise-user-section'),
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1EE),
+      border: Border.all(color: const Color(0xFFF2C8C2)),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Danger zone',
+          style: TextStyle(
+            color: Color(0xFF8F3434),
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          isCurrentAdmin
+              ? 'Use your own Profile privacy controls to anonymise the currently signed-in administrator.'
+              : 'Permanently remove this user’s personal details and sign-in access. This cannot be undone.',
+          style: const TextStyle(
+            color: Color(0xFF795B58),
+            fontSize: 12,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            key: const Key('admin-anonymise-user-button'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB84C4C),
+            ),
+            onPressed: isCurrentAdmin || isBusy ? null : onAnonymise,
+            icon: isBusy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.person_off_outlined),
+            label: Text(isBusy ? 'Anonymising…' : 'Anonymise user'),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AdminAnonymisationConfirmationDialog extends StatefulWidget {
+  const _AdminAnonymisationConfirmationDialog();
+
+  @override
+  State<_AdminAnonymisationConfirmationDialog> createState() =>
+      _AdminAnonymisationConfirmationDialogState();
+}
+
+class _AdminAnonymisationConfirmationDialogState
+    extends State<_AdminAnonymisationConfirmationDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Final confirmation'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Type ANONYMISE to confirm this permanent action.'),
+          const SizedBox(height: 16),
+          TextField(
+            key: const Key('admin-anonymisation-confirmation'),
+            controller: _controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(hintText: 'ANONYMISE'),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context, false),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        key: const Key('confirm-admin-anonymisation'),
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB84C4C)),
+        onPressed: _controller.text.trim() == 'ANONYMISE'
+            ? () => Navigator.pop(context, true)
+            : null,
+        child: const Text('Anonymise user'),
+      ),
+    ],
+  );
 }
 
 class AdminSecurityScreen extends StatefulWidget {

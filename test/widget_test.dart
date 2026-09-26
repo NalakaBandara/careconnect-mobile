@@ -8,6 +8,7 @@ import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_shell.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_qr_check_in_screen.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_security_screens.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_preview_data.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_controller.dart';
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
@@ -1524,6 +1525,76 @@ void main() {
     expect(find.text('Appointment Updated'), findsOneWidget);
   });
 
+  testWidgets('admin permanently anonymises another user', (tester) async {
+    usePhoneSize(tester);
+    final repository = _FakeAdminDataSource();
+    var refreshCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AdminUserAccessScreen(
+          user: const AdminUser(
+            id: '8',
+            email: 'amara@example.com',
+            firstName: 'Amara',
+            lastName: 'Silva',
+            roles: ['PATIENT'],
+            status: 'ACTIVE',
+          ),
+          currentAdminId: '1',
+          repository: repository,
+          onChanged: () async => refreshCalls++,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('admin-user-access')),
+      const Offset(0, -650),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('admin-anonymise-user-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('admin-anonymise-user-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Anonymise this user?'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('continue-admin-anonymisation')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('confirm-admin-anonymisation')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('admin-anonymisation-confirmation')),
+      'ANONYMISE',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('confirm-admin-anonymisation')));
+    await tester.pumpAndSettle();
+
+    expect(repository.anonymisedUserId, '8');
+    expect(refreshCalls, 1);
+  });
+
+  test('admin anonymisation follows the latest backend contract', () async {
+    final apiClient = _FakeUserApiClient();
+
+    await AdminRepository(apiClient).anonymiseUser('8');
+
+    expect(apiClient.lastPatchPath, '/api/v1/users/8?anonymisation=true');
+    expect(apiClient.lastPatchBody, isNull);
+  });
+
   testWidgets('admin verifies an appointment and records QR check-in', (
     tester,
   ) async {
@@ -1571,6 +1642,12 @@ class _FakeAdminDataSource implements AdminDataSource {
   AppointmentStatus? updatedAppointmentStatus;
   String? assignedRoleId;
   String? receptionCheckInAppointmentId;
+  String? anonymisedUserId;
+
+  @override
+  Future<void> anonymiseUser(String userId) async {
+    anonymisedUserId = userId;
+  }
 
   @override
   Future<CareAppointment> getAppointment(String appointmentId) async =>
