@@ -24,6 +24,7 @@ class AdminAppointmentScreen extends StatefulWidget {
 class _AdminAppointmentScreenState extends State<AdminAppointmentScreen> {
   late CareAppointment _appointment;
   late Future<List<AdminAppointmentStatusEntry>> _history;
+  late Future<AdminUser> _patient;
   bool _updating = false;
 
   @override
@@ -31,6 +32,13 @@ class _AdminAppointmentScreenState extends State<AdminAppointmentScreen> {
     super.initState();
     _appointment = widget.appointment;
     _history = widget.repository.getAppointmentStatusHistory(_appointment.id);
+    _patient = widget.repository.getUser(_appointment.patientId);
+  }
+
+  void _refreshPatient() {
+    setState(() {
+      _patient = widget.repository.getUser(_appointment.patientId);
+    });
   }
 
   List<AppointmentStatus> get _availableActions =>
@@ -175,6 +183,8 @@ class _AdminAppointmentScreenState extends State<AdminAppointmentScreen> {
             ),
             const SizedBox(height: 24),
             _DetailsCard(appointment: _appointment),
+            const SizedBox(height: 16),
+            _PatientSection(patient: _patient, onRetry: _refreshPatient),
             if (_appointment.reason?.trim().isNotEmpty == true ||
                 _appointment.notes?.trim().isNotEmpty == true) ...[
               const SizedBox(height: 16),
@@ -293,11 +303,6 @@ class _DetailsCard extends StatelessWidget {
     child: Column(
       children: [
         _DetailRow(
-          icon: Icons.person_outline,
-          label: 'Patient',
-          value: 'Patient #${appointment.patientId}',
-        ),
-        _DetailRow(
           icon: Icons.medical_services_outlined,
           label: 'Professional',
           value: appointment.doctor.displayName,
@@ -317,6 +322,203 @@ class _DetailsCard extends StatelessWidget {
           label: 'Time',
           value: '${appointment.startTime}–${appointment.endTime}',
         ),
+      ],
+    ),
+  );
+}
+
+class _PatientSection extends StatelessWidget {
+  const _PatientSection({required this.patient, required this.onRetry});
+
+  final Future<AdminUser> patient;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<AdminUser>(
+    future: patient,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return Container(
+          key: const Key('admin-patient-loading'),
+          height: 132,
+          decoration: BoxDecoration(
+            color: AppColors.mintSoft,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (snapshot.hasError || !snapshot.hasData) {
+        return _PatientLoadError(onRetry: onRetry);
+      }
+      return _PatientCard(patient: snapshot.data!);
+    },
+  );
+}
+
+class _PatientCard extends StatelessWidget {
+  const _PatientCard({required this.patient});
+
+  final AdminUser patient;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = [
+      if (patient.firstName.isNotEmpty) patient.firstName[0],
+      if (patient.lastName.isNotEmpty) patient.lastName[0],
+    ].join();
+    final phone = patient.phone?.trim();
+    return Container(
+      key: const Key('admin-appointment-patient-card'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.mintSoft,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.16)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Text(
+                  initials.isEmpty ? 'P' : initials.toUpperCase(),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Patient',
+                      style: TextStyle(color: AppColors.muted, fontSize: 11),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      patient.displayName,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _AccountStatusPill(status: patient.status),
+            ],
+          ),
+          const SizedBox(height: 15),
+          _PatientContactRow(
+            icon: Icons.mail_outline_rounded,
+            value: patient.email.isEmpty ? 'Email unavailable' : patient.email,
+          ),
+          const SizedBox(height: 9),
+          _PatientContactRow(
+            icon: Icons.phone_outlined,
+            value: phone?.isNotEmpty == true ? phone! : 'Phone unavailable',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PatientContactRow extends StatelessWidget {
+  const _PatientContactRow({required this.icon, required this.value});
+
+  final IconData icon;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, size: 17, color: AppColors.primary),
+      const SizedBox(width: 9),
+      Expanded(
+        child: Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+    ],
+  );
+}
+
+class _AccountStatusPill extends StatelessWidget {
+  const _AccountStatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = status.toUpperCase() == 'ACTIVE';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: active ? Colors.white : const Color(0xFFFFE8E4),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: active ? AppColors.primary : const Color(0xFFB84C4C),
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientLoadError extends StatelessWidget {
+  const _PatientLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('admin-patient-error'),
+    padding: const EdgeInsets.all(17),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF1EE),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.person_off_outlined, color: Color(0xFFB84C4C)),
+        const SizedBox(width: 11),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Patient details unavailable',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'The appointment is still available for review.',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        TextButton(onPressed: onRetry, child: const Text('Retry')),
       ],
     ),
   );

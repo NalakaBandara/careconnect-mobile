@@ -9,6 +9,7 @@ class AdminUser {
     required this.lastName,
     required this.roles,
     required this.status,
+    this.phone,
   });
 
   final String id;
@@ -17,6 +18,7 @@ class AdminUser {
   final String lastName;
   final List<String> roles;
   final String status;
+  final String? phone;
 
   String get displayName {
     final name = '$firstName $lastName'.trim();
@@ -32,6 +34,7 @@ class AdminUser {
         .whereType<String>()
         .toList(growable: false),
     status: json['status'] as String? ?? 'UNKNOWN',
+    phone: json['phone'] as String?,
   );
 }
 

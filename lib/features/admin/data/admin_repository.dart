@@ -8,6 +8,8 @@ import 'package:careconnect_mobile/features/find_care/domain/care_professional.d
 abstract interface class AdminDataSource {
   Future<AdminDashboardSnapshot> getDashboard();
 
+  Future<AdminUser> getUser(String userId);
+
   Future<void> createDoctor({
     required String userId,
     String? licenseNumber,
@@ -121,6 +123,16 @@ class AdminRepository implements AdminDataSource {
   const AdminRepository(this._client);
 
   final ApiClient _client;
+
+  @override
+  Future<AdminUser> getUser(String userId) async {
+    final response = _objectMap(await _client.get(ApiEndpoints.user(userId)));
+    final data = response['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid admin user response');
+    }
+    return AdminUser.fromJson(data);
+  }
 
   @override
   Future<AdminDashboardSnapshot> getDashboard() async {

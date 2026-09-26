@@ -6,6 +6,7 @@ import 'package:careconnect_mobile/core/network/api_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/admin/data/admin_repository.dart';
 import 'package:careconnect_mobile/features/admin/domain/admin_dashboard.dart';
+import 'package:careconnect_mobile/features/admin/presentation/admin_appointment_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_shell.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_qr_check_in_screen.dart';
 import 'package:careconnect_mobile/features/admin/presentation/admin_security_screens.dart';
@@ -1470,13 +1471,14 @@ void main() {
       roles: ['ADMIN'],
       status: 'ACTIVE',
     );
+    final repository = _FakeAdminDataSource();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
         home: AdminShell(
           user: admin,
           accessTokenProvider: () async => 'admin-token',
-          repository: _FakeAdminDataSource(),
+          repository: repository,
         ),
       ),
     );
@@ -1549,10 +1551,19 @@ void main() {
     await tester.tap(find.byKey(const Key('admin-appointment-4821')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-appointment-detail')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('admin-status-COMPLETED')));
+    final completeAppointment = find.byKey(const Key('admin-status-COMPLETED'));
+    await tester.scrollUntilVisible(completeAppointment, 220);
+    await tester.tap(completeAppointment);
     await tester.pumpAndSettle();
     expect(find.text('Confirm change'), findsOneWidget);
     await tester.tap(find.text('Confirm change'));
+    await tester.pumpAndSettle();
+    expect(repository.updatedAppointmentStatus, AppointmentStatus.completed);
+    await tester.fling(
+      find.byKey(const Key('admin-appointment-detail')),
+      const Offset(0, 1200),
+      1800,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Completed'), findsWidgets);
     await tester.pageBack();
@@ -1673,6 +1684,47 @@ void main() {
     expect(apiClient.lastPatchBody, isNull);
   });
 
+  test('admin repository loads one patient by id', () async {
+    final apiClient = _FakeUserApiClient();
+
+    final patient = await AdminRepository(apiClient).getUser('8');
+
+    expect(apiClient.lastGetPath, '/api/v1/users/8');
+    expect(patient.displayName, 'Amara Silva');
+    expect(patient.email, 'amara@example.com');
+    expect(patient.phone, '0771234567');
+    expect(patient.status, 'ACTIVE');
+  });
+
+  testWidgets('admin appointment displays live patient details', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAdminDataSource();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AdminAppointmentScreen(
+          appointment: AppointmentsPreviewData.appointments.first,
+          repository: repository,
+          onChanged: () async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.getUserCalls, 1);
+    expect(
+      find.byKey(const Key('admin-appointment-patient-card')),
+      findsOneWidget,
+    );
+    expect(find.text('Amara Silva'), findsOneWidget);
+    expect(find.text('amara@example.com'), findsOneWidget);
+    expect(find.text('0771234567'), findsOneWidget);
+    expect(find.text('Patient #8'), findsNothing);
+  });
+
   testWidgets('admin verifies an appointment and records QR check-in', (
     tester,
   ) async {
@@ -1721,10 +1773,25 @@ class _FakeAdminDataSource implements AdminDataSource {
   String? assignedRoleId;
   String? receptionCheckInAppointmentId;
   String? anonymisedUserId;
+  int getUserCalls = 0;
 
   @override
   Future<void> anonymiseUser(String userId) async {
     anonymisedUserId = userId;
+  }
+
+  @override
+  Future<AdminUser> getUser(String userId) async {
+    getUserCalls++;
+    return AdminUser(
+      id: userId,
+      email: 'amara@example.com',
+      firstName: 'Amara',
+      lastName: 'Silva',
+      roles: const ['PATIENT'],
+      status: 'ACTIVE',
+      phone: '0771234567',
+    );
   }
 
   @override
@@ -2494,8 +2561,28 @@ class _FakeUserApiClient extends ApiClient {
 
   String? lastPatchPath;
   Object? lastPatchBody;
+  String? lastGetPath;
 
   static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    lastGetPath = path;
+    return {
+      'data': {
+        'id': '8',
+        'email': 'amara@example.com',
+        'firstName': 'Amara',
+        'lastName': 'Silva',
+        'phone': '0771234567',
+        'status': 'ACTIVE',
+        'roles': ['PATIENT'],
+      },
+    };
+  }
 
   @override
   Future<Object?> patch(String path, {Object? body}) async {
