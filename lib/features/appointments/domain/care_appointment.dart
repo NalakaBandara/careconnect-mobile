@@ -34,6 +34,34 @@ enum AppointmentStatus {
   };
 }
 
+class AppointmentStatusHistoryEntry {
+  const AppointmentStatusHistoryEntry({
+    required this.id,
+    required this.appointmentId,
+    required this.status,
+    required this.changedByUserId,
+    required this.createdAt,
+    this.reason,
+  });
+
+  final String id;
+  final String appointmentId;
+  final AppointmentStatus status;
+  final String changedByUserId;
+  final String? reason;
+  final DateTime? createdAt;
+
+  factory AppointmentStatusHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      AppointmentStatusHistoryEntry(
+        id: json['id'].toString(),
+        appointmentId: json['appointmentId'].toString(),
+        status: AppointmentStatus.fromApi(json['status'] as String?),
+        changedByUserId: json['changedByUserId'].toString(),
+        reason: json['reason'] as String?,
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+      );
+}
+
 class AppointmentDoctor {
   const AppointmentDoctor({
     required this.id,

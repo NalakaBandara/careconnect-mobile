@@ -12,6 +12,10 @@ abstract interface class AppointmentsDataSource {
 
   Future<CareAppointment> getAppointment(String id);
 
+  Future<List<AppointmentStatusHistoryEntry>> getAppointmentStatusHistory(
+    String id,
+  );
+
   Future<CareAppointment> cancelAppointment(String id, {String? reason});
 
   Future<List<AppointmentTimeSlot>> getAvailableSlots({
@@ -59,6 +63,20 @@ class AppointmentsRepository implements AppointmentsDataSource {
   Future<CareAppointment> getAppointment(String id) async {
     final response = await _client.get(ApiEndpoints.appointment(id));
     return CareAppointment.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<AppointmentStatusHistoryEntry>> getAppointmentStatusHistory(
+    String id,
+  ) async {
+    final response = await _client.get(
+      ApiEndpoints.appointmentStatusHistory(id),
+    );
+    final body = response as Map<String, dynamic>;
+    return (body['data'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AppointmentStatusHistoryEntry.fromJson)
+        .toList(growable: false);
   }
 
   @override

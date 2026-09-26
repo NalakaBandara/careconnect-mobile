@@ -26,13 +26,28 @@ class AppointmentDetailScreen extends StatefulWidget {
 
 class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   late CareAppointment _appointment = widget.initialAppointment;
+  Future<List<AppointmentStatusHistoryEntry>>? _history;
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    if (widget.repository != null) _refreshAppointment();
+    if (widget.repository != null) {
+      _history = widget.repository!.getAppointmentStatusHistory(
+        _appointment.id,
+      );
+      _refreshAppointment();
+    }
+  }
+
+  void _refreshHistory() {
+    if (widget.repository == null) return;
+    setState(() {
+      _history = widget.repository!.getAppointmentStatusHistory(
+        _appointment.id,
+      );
+    });
   }
 
   Future<void> _refreshAppointment() async {
@@ -69,6 +84,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     if (updated == null || !mounted) return;
     setState(() => _appointment = updated);
     widget.onChanged(updated);
+    _refreshHistory();
   }
 
   Future<void> _cancel() async {
@@ -83,6 +99,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     if (updated == null || !mounted) return;
     setState(() => _appointment = updated);
     widget.onChanged(updated);
+    _refreshHistory();
   }
 
   @override
@@ -108,6 +125,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           if (appointment.reason?.isNotEmpty ?? false) ...[
             const SizedBox(height: 14),
             _ReasonCard(reason: appointment.reason!),
+          ],
+          if (_history != null) ...[
+            const SizedBox(height: 22),
+            _StatusHistorySection(history: _history!, onRetry: _refreshHistory),
           ],
           if (appointment.status == AppointmentStatus.confirmed) ...[
             const SizedBox(height: 14),
@@ -142,6 +163,232 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       ),
     );
   }
+}
+
+class _StatusHistorySection extends StatelessWidget {
+  const _StatusHistorySection({required this.history, required this.onRetry});
+
+  final Future<List<AppointmentStatusHistoryEntry>> history;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    key: const Key('patient-appointment-status-history'),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Appointment journey',
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      const SizedBox(height: 5),
+      const Text(
+        'Follow each update from your clinic.',
+        style: TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+      const SizedBox(height: 14),
+      FutureBuilder<List<AppointmentStatusHistoryEntry>>(
+        future: history,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const _HistoryLoading();
+          }
+          if (snapshot.hasError) {
+            return _HistoryMessage(
+              key: const Key('patient-status-history-error'),
+              icon: Icons.sync_problem_rounded,
+              title: 'Journey unavailable',
+              message: 'We could not load the latest appointment updates.',
+              actionLabel: 'Retry',
+              onAction: onRetry,
+            );
+          }
+          final entries = snapshot.data ?? const [];
+          if (entries.isEmpty) {
+            return const _HistoryMessage(
+              key: Key('patient-status-history-empty'),
+              icon: Icons.history_toggle_off_rounded,
+              title: 'No updates yet',
+              message: 'Clinic status changes will appear here.',
+            );
+          }
+          return Container(
+            key: const Key('patient-status-history-list'),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Column(
+              children: [
+                for (var index = 0; index < entries.length; index++)
+                  _PatientHistoryRow(
+                    entry: entries[index],
+                    isLast: index == entries.length - 1,
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    ],
+  );
+}
+
+class _PatientHistoryRow extends StatelessWidget {
+  const _PatientHistoryRow({required this.entry, required this.isLast});
+
+  final AppointmentStatusHistoryEntry entry;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _historyColor(entry.status);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 24,
+            child: Column(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.25),
+                        blurRadius: 5,
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isLast)
+                  Expanded(child: Container(width: 2, color: AppColors.border)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 10 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.status.label,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _historyDateLabel(entry.createdAt),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 11,
+                    ),
+                  ),
+                  if (entry.reason?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      entry.reason!.trim(),
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryLoading extends StatelessWidget {
+  const _HistoryLoading();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('patient-status-history-loading'),
+    width: double.infinity,
+    padding: const EdgeInsets.all(24),
+    decoration: const BoxDecoration(
+      color: AppColors.mintSoft,
+      borderRadius: BorderRadius.all(Radius.circular(22)),
+    ),
+    child: const Center(child: CircularProgressIndicator()),
+  );
+}
+
+class _HistoryMessage extends StatelessWidget {
+  const _HistoryMessage({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AppColors.mintSoft,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: AppColors.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text(
+                message,
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        if (onAction != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+      ],
+    ),
+  );
+}
+
+Color _historyColor(AppointmentStatus status) => switch (status) {
+  AppointmentStatus.cancelled ||
+  AppointmentStatus.noShow => const Color(0xFFB84C4C),
+  AppointmentStatus.completed => const Color(0xFF3567C8),
+  _ => AppColors.primary,
+};
+
+String _historyDateLabel(DateTime? value) {
+  if (value == null) return 'Time unavailable';
+  final local = value.toLocal();
+  String two(int number) => number.toString().padLeft(2, '0');
+  return '${local.year}-${two(local.month)}-${two(local.day)} · '
+      '${two(local.hour)}:${two(local.minute)}';
 }
 
 class _DetailError extends StatelessWidget {

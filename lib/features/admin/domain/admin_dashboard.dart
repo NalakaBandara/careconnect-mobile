@@ -214,33 +214,7 @@ class AdminDoctorSchedule {
   };
 }
 
-class AdminAppointmentStatusEntry {
-  const AdminAppointmentStatusEntry({
-    required this.id,
-    required this.appointmentId,
-    required this.status,
-    required this.changedByUserId,
-    required this.createdAt,
-    this.reason,
-  });
-
-  final String id;
-  final String appointmentId;
-  final AppointmentStatus status;
-  final String changedByUserId;
-  final String? reason;
-  final DateTime? createdAt;
-
-  factory AdminAppointmentStatusEntry.fromJson(Map<String, dynamic> json) =>
-      AdminAppointmentStatusEntry(
-        id: json['id'].toString(),
-        appointmentId: json['appointmentId'].toString(),
-        status: AppointmentStatus.fromApi(json['status'] as String?),
-        changedByUserId: json['changedByUserId'].toString(),
-        reason: json['reason'] as String?,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
-      );
-}
+typedef AdminAppointmentStatusEntry = AppointmentStatusHistoryEntry;
 
 class AdminRole {
   const AdminRole({required this.id, required this.name, this.description});

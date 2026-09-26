@@ -14,6 +14,7 @@ import 'package:careconnect_mobile/features/appointments/data/appointments_contr
 import 'package:careconnect_mobile/features/appointments/data/appointments_repository.dart';
 import 'package:careconnect_mobile/features/appointments/domain/care_appointment.dart';
 import 'package:careconnect_mobile/features/appointments/domain/check_in_record.dart';
+import 'package:careconnect_mobile/features/appointments/presentation/appointment_detail_screen.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/appointments_screen.dart';
 import 'package:careconnect_mobile/features/appointments/presentation/check_in_screen.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
@@ -928,6 +929,20 @@ void main() {
     });
   });
 
+  test('appointment repository parses the status history contract', () async {
+    final client = _FakeAppointmentHistoryApiClient();
+    final repository = AppointmentsRepository(client);
+
+    final history = await repository.getAppointmentStatusHistory('4821');
+
+    expect(client.lastPath, '/api/v1/appointments/4821/status-history');
+    expect(history, hasLength(2));
+    expect(history.first.status, AppointmentStatus.pending);
+    expect(history.last.status, AppointmentStatus.confirmed);
+    expect(history.last.reason, 'Confirmed by clinic');
+    expect(history.last.changedByUserId, '4');
+  });
+
   test(
     'shared appointments controller deduplicates loads and syncs updates',
     () async {
@@ -1008,6 +1023,39 @@ void main() {
     await tester.tap(find.byKey(const Key('appointments-past-tab')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('appointment-card-4821')), findsOneWidget);
+  });
+
+  testWidgets('loads real appointment status history for a patient', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final repository = _FakeAppointmentsDataSource();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AppointmentDetailScreen(
+          initialAppointment: repository.appointment,
+          repository: repository,
+          onChanged: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.historyCalls, 1);
+    expect(
+      find.byKey(const Key('patient-appointment-status-history')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('patient-status-history-list')),
+      findsOneWidget,
+    );
+    expect(find.text('Appointment journey'), findsOneWidget);
+    expect(find.text('Confirmed'), findsWidgets);
+    expect(find.text('Confirmed by Northgate reception'), findsOneWidget);
+    expect(find.textContaining('changed by user'), findsNothing);
   });
 
   testWidgets('shows the QR image returned by the appointment API', (
@@ -2081,6 +2129,7 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
       .copyWith(bookingReference: 'CC-4821-MEH');
   int listCalls = 0;
   int detailCalls = 0;
+  int historyCalls = 0;
   int slotCalls = 0;
   int rescheduleCalls = 0;
   List<CareAppointment>? appointments;
@@ -2101,6 +2150,30 @@ class _FakeAppointmentsDataSource implements AppointmentsDataSource {
   Future<CareAppointment> getAppointment(String id) async {
     detailCalls++;
     return appointment;
+  }
+
+  @override
+  Future<List<AppointmentStatusHistoryEntry>> getAppointmentStatusHistory(
+    String id,
+  ) async {
+    historyCalls++;
+    return [
+      AppointmentStatusHistoryEntry(
+        id: 'history-1',
+        appointmentId: id,
+        status: AppointmentStatus.pending,
+        changedByUserId: '8',
+        createdAt: DateTime.utc(2026, 9, 16, 8, 30),
+      ),
+      AppointmentStatusHistoryEntry(
+        id: 'history-2',
+        appointmentId: id,
+        status: AppointmentStatus.confirmed,
+        changedByUserId: '4',
+        reason: 'Confirmed by Northgate reception',
+        createdAt: DateTime.utc(2026, 9, 16, 9),
+      ),
+    ];
   }
 
   @override
@@ -2248,6 +2321,42 @@ class _FakeBookingApiClient extends ApiClient {
       'notes': null,
       'createdAt': '2026-09-21T08:00:00.000Z',
       'updatedAt': '2026-09-21T08:00:00.000Z',
+    };
+  }
+}
+
+class _FakeAppointmentHistoryApiClient extends ApiClient {
+  _FakeAppointmentHistoryApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastPath;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    lastPath = path;
+    return {
+      'data': [
+        {
+          'id': '1',
+          'appointmentId': '4821',
+          'status': 'PENDING',
+          'changedByUserId': '8',
+          'reason': null,
+          'createdAt': '2026-09-16T08:30:00.000Z',
+        },
+        {
+          'id': '2',
+          'appointmentId': '4821',
+          'status': 'CONFIRMED',
+          'changedByUserId': '4',
+          'reason': 'Confirmed by clinic',
+          'createdAt': '2026-09-16T09:00:00.000Z',
+        },
+      ],
     };
   }
 }
