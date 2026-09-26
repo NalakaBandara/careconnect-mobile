@@ -470,6 +470,38 @@ void main() {
     expect(session.user.firstName, 'Amara');
   });
 
+  test('signing out clears the locally stored access token', () async {
+    final tokenStore = _FakeTokenStore()..token = 'expired-test-token';
+    final service = AuthService(
+      tokenStore: tokenStore,
+      publicClient: _FakeAuthApiClient(),
+    );
+
+    await service.logout();
+
+    expect(tokenStore.token, isNull);
+  });
+
+  testWidgets('welcome screen explains when a session has expired', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: WelcomeScreen(
+          authService: _FakeAuthDataSource(),
+          initialMessage: 'Your session expired. Please sign in again.',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.text('Your session expired. Please sign in again.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows home dashboard and switches main navigation', (
     tester,
   ) async {

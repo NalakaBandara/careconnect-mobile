@@ -7,18 +7,23 @@ import 'package:careconnect_mobile/core/network/api_logger.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
 typedef UnauthorizedHandler = Future<void> Function();
+typedef ApiUriBuilder =
+    Uri Function(String path, Map<String, dynamic>? queryParameters);
 
 class ApiClient {
   ApiClient({
     required AccessTokenProvider accessTokenProvider,
     UnauthorizedHandler? onUnauthorized,
+    ApiUriBuilder? apiUriBuilder,
     HttpClient? httpClient,
   }) : _accessTokenProvider = accessTokenProvider,
        _onUnauthorized = onUnauthorized,
+       _apiUriBuilder = apiUriBuilder ?? AppConfig.apiUri,
        _httpClient = httpClient ?? HttpClient();
 
   final AccessTokenProvider _accessTokenProvider;
   final UnauthorizedHandler? _onUnauthorized;
+  final ApiUriBuilder _apiUriBuilder;
   final HttpClient _httpClient;
   bool _didNotifyUnauthorized = false;
 
@@ -42,7 +47,7 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Object? body,
   }) async {
-    final uri = AppConfig.apiUri(path, queryParameters);
+    final uri = _apiUriBuilder(path, queryParameters);
     final stopwatch = Stopwatch()..start();
     ApiLogger.request(method: method, uri: uri, body: body);
 
