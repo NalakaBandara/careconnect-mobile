@@ -518,11 +518,7 @@ class _FindCareHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF08756F), Color(0xFF00A79D)],
-        ),
+        gradient: AppGradients.brand,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -845,11 +841,7 @@ class _AppointmentCard extends StatelessWidget {
                 width: 56,
                 height: 64,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF007C74), Color(0xFF00AA9F)],
-                  ),
+                  gradient: AppGradients.brand,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(

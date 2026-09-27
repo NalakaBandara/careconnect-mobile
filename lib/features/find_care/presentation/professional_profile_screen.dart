@@ -506,11 +506,7 @@ class _ProfileHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primaryDark, AppColors.primary],
-        ),
+        gradient: AppGradients.brand,
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(

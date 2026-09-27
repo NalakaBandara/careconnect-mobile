@@ -249,11 +249,7 @@ class _AuthHero extends StatelessWidget {
     return Container(
       height: 220,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primaryDark, AppColors.primary],
-        ),
+        gradient: AppGradients.brand,
         borderRadius: BorderRadius.circular(32),
       ),
       child: Stack(

@@ -278,11 +278,7 @@ class _GuestProfileView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primaryDark, AppColors.primary],
-              ),
+              gradient: AppGradients.brand,
               borderRadius: BorderRadius.circular(28),
             ),
             child: const Column(

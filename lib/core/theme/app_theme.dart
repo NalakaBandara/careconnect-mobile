@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const primary = Color(0xFF087E75);
+  static const primary = Color(0xFF08756F);
+  static const primaryBright = Color(0xFF00A79D);
   static const primaryDark = Color(0xFF063F3C);
   static const accent = Color(0xFF56C9A8);
   static const coral = Color(0xFFFF8A72);
@@ -12,6 +13,14 @@ abstract final class AppColors {
   static const blueSoft = Color(0xFFE7EFFE);
   static const lilacSoft = Color(0xFFF0E9FF);
   static const border = Color(0xFFDCE8E5);
+}
+
+abstract final class AppGradients {
+  static const brand = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [AppColors.primary, AppColors.primaryBright],
+  );
 }
 
 @immutable

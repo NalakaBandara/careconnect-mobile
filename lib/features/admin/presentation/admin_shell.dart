@@ -1104,9 +1104,7 @@ class _AdminAccountPage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primaryDark, AppColors.primary],
-            ),
+            gradient: AppGradients.brand,
             borderRadius: BorderRadius.circular(26),
           ),
           child: Column(

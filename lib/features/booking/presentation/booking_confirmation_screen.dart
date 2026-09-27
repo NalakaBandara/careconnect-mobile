@@ -26,11 +26,7 @@ class BookingConfirmationScreen extends StatelessWidget {
             key: const Key('booking-confirmation'),
             padding: const EdgeInsets.all(26),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primaryDark, AppColors.primary],
-              ),
+              gradient: AppGradients.brand,
               borderRadius: BorderRadius.circular(30),
             ),
             child: const Column(

@@ -422,11 +422,7 @@ class _AppointmentHero extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(22),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppColors.primaryDark, AppColors.primary],
-      ),
+      gradient: AppGradients.brand,
       borderRadius: BorderRadius.circular(28),
     ),
     child: Column(
