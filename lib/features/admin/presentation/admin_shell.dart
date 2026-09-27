@@ -17,6 +17,7 @@ import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_settings_screens.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 
 class AdminShell extends StatefulWidget {
   const AdminShell({
@@ -612,16 +613,16 @@ class _DoctorAdminCard extends StatelessWidget {
     ),
     child: Row(
       children: [
-        CircleAvatar(
+        ProfilePhoto(
+          imageUrl: doctor.profilePhoto,
+          fallbackLabel: doctor.firstName.isEmpty
+              ? 'DR'
+              : doctor.firstName.characters.first,
+          size: 40,
           backgroundColor: doctor.isVerified
               ? AppColors.mintSoft
               : AppColors.blueSoft,
           foregroundColor: AppColors.primary,
-          child: Icon(
-            doctor.isVerified
-                ? Icons.verified_rounded
-                : Icons.medical_services_outlined,
-          ),
         ),
         const SizedBox(width: 12),
         Expanded(

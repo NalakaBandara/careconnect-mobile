@@ -144,6 +144,7 @@ class _MainShellState extends State<MainShell> {
       if (_loadedIndexes.contains(0))
         HomeScreen(
           firstName: _user?.firstName,
+          profilePhoto: _user?.profilePhoto,
           appointmentsController: _appointmentsController,
           careRepository: _findCareRepository,
           isGuest: _user == null,

@@ -1,6 +1,7 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/booking/domain/appointment_booking.dart';
 import 'package:flutter/material.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
   const BookingConfirmationScreen({
@@ -139,21 +140,11 @@ class _AppointmentCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.mintSoft,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  booking.professional.initials,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+              ProfilePhoto(
+                imageUrl: booking.professional.profilePhoto,
+                fallbackLabel: booking.professional.initials,
+                size: 50,
+                borderRadius: BorderRadius.circular(16),
               ),
               const SizedBox(width: 13),
               Expanded(

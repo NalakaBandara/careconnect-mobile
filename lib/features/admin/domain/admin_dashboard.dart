@@ -75,6 +75,7 @@ class AdminDoctor {
     required this.specialties,
     required this.clinics,
     this.licenseNumber,
+    this.profilePhoto,
     this.bio,
     this.yearsOfExperience,
   });
@@ -84,6 +85,7 @@ class AdminDoctor {
   final String firstName;
   final String lastName;
   final String? licenseNumber;
+  final String? profilePhoto;
   final String? bio;
   final int? yearsOfExperience;
   final bool isVerified;
@@ -98,6 +100,7 @@ class AdminDoctor {
     firstName: json['firstName'] as String? ?? '',
     lastName: json['lastName'] as String? ?? '',
     licenseNumber: json['licenseNumber'] as String?,
+    profilePhoto: json['profilePhoto'] as String?,
     bio: json['bio'] as String?,
     yearsOfExperience: json['yearsOfExperience'] as int?,
     isVerified: json['isVerified'] as bool? ?? false,

@@ -6,6 +6,7 @@ import 'package:careconnect_mobile/features/find_care/data/find_care_repository.
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 
 class ProfessionalProfileScreen extends StatefulWidget {
   const ProfessionalProfileScreen({
@@ -524,21 +525,17 @@ class _ProfileHero extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 76,
-                height: 76,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(23),
-                ),
-                child: Text(
-                  professional.initials,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
+              ProfilePhoto(
+                key: const Key('professional-profile-photo'),
+                imageUrl: professional.profilePhoto,
+                fallbackLabel: professional.initials,
+                size: 76,
+                borderRadius: BorderRadius.circular(23),
+                backgroundColor: Colors.white,
+                textStyle: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(width: 16),

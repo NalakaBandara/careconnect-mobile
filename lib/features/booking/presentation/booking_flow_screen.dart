@@ -8,6 +8,7 @@ import 'package:careconnect_mobile/features/booking/presentation/booking_confirm
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 
 class BookingFlowScreen extends StatefulWidget {
   const BookingFlowScreen({
@@ -533,14 +534,14 @@ class _DoctorStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          ProfilePhoto(
+            imageUrl: professional.profilePhoto,
+            fallbackLabel: professional.initials,
+            size: 40,
             backgroundColor: Colors.white,
-            child: Text(
-              professional.initials,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-              ),
+            textStyle: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(width: 12),

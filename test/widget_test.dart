@@ -45,6 +45,7 @@ import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_settings_screens.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -60,6 +61,30 @@ void main() {
     BuildContext context,
     CurrentUser user,
   ) => MainShell(user: user, useLiveGuestDirectory: false);
+
+  testWidgets('profile photo uses backend image data and initials fallback', (
+    tester,
+  ) async {
+    const imageData =
+        'data:image/png;base64,'
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              ProfilePhoto(imageUrl: imageData, fallbackLabel: 'AS', size: 48),
+              ProfilePhoto(imageUrl: null, fallbackLabel: 'NB', size: 48),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('NB'), findsOneWidget);
+  });
 
   testWidgets('shows splash then opens onboarding', (tester) async {
     usePhoneSize(tester);
@@ -915,7 +940,7 @@ void main() {
       'id': '22',
       'firstName': 'Nadeesha',
       'lastName': 'Fernando',
-      'profilePhoto': null,
+      'profilePhoto': 'https://images.careconnect.test/doctors/22.jpg',
       'bio': 'Cardiac care',
       'yearsOfExperience': 8,
       'isVerified': true,
@@ -931,6 +956,10 @@ void main() {
     expect(professional.displayName, 'Dr. Nadeesha Fernando');
     expect(professional.primarySpecialty, 'Cardiology');
     expect(professional.isVerified, isTrue);
+    expect(
+      professional.profilePhoto,
+      'https://images.careconnect.test/doctors/22.jpg',
+    );
   });
 
   test('unwraps the latest backend doctor detail response', () async {

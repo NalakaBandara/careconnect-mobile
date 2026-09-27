@@ -9,6 +9,7 @@ import 'package:careconnect_mobile/features/find_care/presentation/care_director
 import 'package:careconnect_mobile/features/find_care/presentation/professional_profile_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:flutter/material.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 
 class FindCareScreen extends StatefulWidget {
   const FindCareScreen({
@@ -413,22 +414,12 @@ class _ProfessionalCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.mintSoft,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Text(
-                      professional.initials,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                  ProfilePhoto(
+                    key: ValueKey('doctor-photo-${professional.id}'),
+                    imageUrl: professional.profilePhoto,
+                    fallbackLabel: professional.initials,
+                    size: 58,
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

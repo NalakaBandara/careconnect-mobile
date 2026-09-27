@@ -6,6 +6,7 @@ import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/presentation/edit_profile_screen.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_settings_screens.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -456,16 +457,17 @@ class _ProfileHero extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 36,
+              ProfilePhoto(
+                key: const Key('current-user-profile-photo'),
+                imageUrl: user.profilePhoto,
+                fallbackLabel: initials,
+                size: 72,
                 backgroundColor: Colors.white,
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    color: Color(0xFF7957C8),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
+                foregroundColor: const Color(0xFF7957C8),
+                textStyle: const TextStyle(
+                  color: Color(0xFF7957C8),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               const Spacer(),

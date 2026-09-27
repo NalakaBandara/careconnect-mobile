@@ -9,12 +9,14 @@ import 'package:careconnect_mobile/features/find_care/domain/care_professional.d
 import 'package:careconnect_mobile/features/find_care/presentation/care_directory_status_banner.dart';
 import 'package:careconnect_mobile/features/home/data/home_preview_data.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
+import 'package:careconnect_mobile/shared/widgets/profile_photo.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.firstName,
+    this.profilePhoto,
     this.repository,
     this.appointmentsController,
     this.careRepository,
@@ -28,6 +30,7 @@ class HomeScreen extends StatefulWidget {
   });
 
   final String? firstName;
+  final String? profilePhoto;
   final AppointmentsDataSource? repository;
   final AppointmentsController? appointmentsController;
   final FindCareDataSource? careRepository;
@@ -206,6 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   delegate: SliverChildListDelegate([
                     _HomeHeader(
                       firstName: widget.firstName,
+                      profilePhoto: widget.profilePhoto,
                       onProfile: widget.onProfile,
                       onNotifications: widget.onNotifications,
                     ),
@@ -385,11 +389,13 @@ class _HomeScreenState extends State<HomeScreen> {
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.firstName,
+    required this.profilePhoto,
     required this.onProfile,
     required this.onNotifications,
   });
 
   final String? firstName;
+  final String? profilePhoto;
   final VoidCallback onProfile;
   final VoidCallback onNotifications;
 
@@ -477,19 +483,13 @@ class _HomeHeader extends StatelessWidget {
             child: InkWell(
               onTap: onProfile,
               customBorder: const CircleBorder(),
-              child: SizedBox(
-                width: 42,
-                height: 42,
-                child: Center(
-                  child: Text(
-                    _initials(firstName),
-                    style: const TextStyle(
-                      color: Color(0xFF8159D9),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
+              child: ProfilePhoto(
+                key: const Key('home-user-profile-photo'),
+                imageUrl: profilePhoto,
+                fallbackLabel: _initials(firstName),
+                size: 42,
+                backgroundColor: const Color(0xFFF3EAFE),
+                foregroundColor: const Color(0xFF8159D9),
               ),
             ),
           ),
