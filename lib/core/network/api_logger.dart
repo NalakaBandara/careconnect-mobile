@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 abstract final class ApiLogger {
   static const _redactedValue = '<redacted>';
-  static const _maxPayloadLength = 1600;
+  static const _maxPayloadLength = 4000;
 
   static const _sensitiveKeys = {
     'authorization',
@@ -60,7 +60,9 @@ abstract final class ApiLogger {
       '(${elapsed.inMilliseconds}ms)',
     );
     if (body != null) {
-      debugPrint('[CareConnect API]   response: ${formatPayload(body)}');
+      debugPrint(
+        '[CareConnect API]   response:\n${formatPayload(body, pretty: true)}',
+      );
     }
   }
 
@@ -94,8 +96,11 @@ abstract final class ApiLogger {
     return value;
   }
 
-  static String formatPayload(Object? payload) {
-    final formatted = jsonEncode(sanitize(payload));
+  static String formatPayload(Object? payload, {bool pretty = false}) {
+    final sanitized = sanitize(payload);
+    final formatted = pretty
+        ? const JsonEncoder.withIndent('  ').convert(sanitized)
+        : jsonEncode(sanitized);
     if (formatted.length <= _maxPayloadLength) return formatted;
     return '${formatted.substring(0, _maxPayloadLength)}…<truncated>';
   }

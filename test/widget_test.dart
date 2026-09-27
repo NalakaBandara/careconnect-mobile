@@ -170,6 +170,39 @@ void main() {
     });
   });
 
+  test('API responses are printed as readable indented JSON', () {
+    final messages = <String>[];
+    final previousDebugPrint = debugPrint;
+    debugPrint = (message, {wrapWidth}) {
+      if (message != null) messages.add(message);
+    };
+    addTearDown(() => debugPrint = previousDebugPrint);
+
+    ApiLogger.response(
+      method: 'GET',
+      uri: Uri.parse(
+        'https://careconnect.test/api/v1/doctors/1/available-slots',
+      ),
+      statusCode: 200,
+      elapsed: const Duration(milliseconds: 42),
+      body: {
+        'doctorId': '1',
+        'clinicId': '1',
+        'serviceId': null,
+        'date': '2026-09-28',
+        'slots': [
+          {'startTime': '09:00:00', 'endTime': '09:30:00', 'available': false},
+        ],
+      },
+    );
+
+    final output = messages.join('\n');
+    expect(output, contains('[CareConnect API]   response:\n{'));
+    expect(output, contains('  "doctorId": "1"'));
+    expect(output, contains('  "slots": [\n    {'));
+    expect(output, contains('      "available": false'));
+  });
+
   test('application logs redact sensitive debug context', () {
     final messages = <String>[];
     final previousDebugPrint = debugPrint;
