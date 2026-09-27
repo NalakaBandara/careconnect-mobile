@@ -1072,7 +1072,13 @@ void main() {
 
     expect(client.lastPath, '/api/v1/appointments');
     expect(client.lastBody, draft.toApiJson());
+    expect(client.lastPatchPath, '/api/v1/appointments/73/status');
+    expect(client.lastPatchBody, {
+      'status': 'CONFIRMED',
+      'reason': 'Automatically confirmed when booked',
+    });
     expect(appointment.reference, 'CC-7351-REAL');
+    expect(appointment.status, AppointmentStatus.confirmed);
   });
 
   test('appointment payload follows the backend create contract', () {
@@ -2813,7 +2819,7 @@ class _FakeBookingDataSource implements AppointmentBookingDataSource {
       appointmentDate: booking.appointmentDate,
       startTime: booking.startTime,
       endTime: booking.endTime,
-      status: AppointmentStatus.pending,
+      status: AppointmentStatus.confirmed,
     );
   }
 }
@@ -2823,6 +2829,8 @@ class _FakeBookingApiClient extends ApiClient {
 
   String? lastPath;
   Object? lastBody;
+  String? lastPatchPath;
+  Object? lastPatchBody;
 
   static Future<String?> _noToken() async => null;
 
@@ -2855,6 +2863,38 @@ class _FakeBookingApiClient extends ApiClient {
       'notes': null,
       'createdAt': '2026-09-21T08:00:00.000Z',
       'updatedAt': '2026-09-21T08:00:00.000Z',
+    };
+  }
+
+  @override
+  Future<Object?> patch(String path, {Object? body}) async {
+    lastPatchPath = path;
+    lastPatchBody = body;
+    return {
+      'id': '73',
+      'patientId': '8',
+      'doctor': {
+        'id': '1',
+        'firstName': 'Arun',
+        'lastName': 'Mehta',
+        'licenseNumber': 'SLMC 12458',
+      },
+      'clinic': {'id': '1', 'name': 'Northgate Medical Centre'},
+      'service': {
+        'id': '1',
+        'name': 'General consultation',
+        'durationMinutes': 20,
+      },
+      'doctorScheduleId': '15',
+      'appointmentDate': '2026-09-21',
+      'startTime': '09:30',
+      'endTime': '09:50',
+      'status': 'CONFIRMED',
+      'bookingReference': 'CC-7351-REAL',
+      'reason': 'Automatically confirmed when booked',
+      'notes': null,
+      'createdAt': '2026-09-21T08:00:00.000Z',
+      'updatedAt': '2026-09-21T08:00:01.000Z',
     };
   }
 }

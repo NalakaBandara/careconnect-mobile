@@ -20,6 +20,20 @@ class AppointmentBookingRepository implements AppointmentBookingDataSource {
       ApiEndpoints.appointments,
       body: booking.toApiJson(),
     );
+    final created = _appointmentFromResponse(response);
+    if (created.status != AppointmentStatus.pending) return created;
+
+    final confirmedResponse = await _client.patch(
+      ApiEndpoints.appointmentStatus(created.id),
+      body: const {
+        'status': 'CONFIRMED',
+        'reason': 'Automatically confirmed when booked',
+      },
+    );
+    return _appointmentFromResponse(confirmedResponse);
+  }
+
+  CareAppointment _appointmentFromResponse(Object? response) {
     if (response case {'data': final Map<String, dynamic> data}) {
       return CareAppointment.fromJson(data);
     }

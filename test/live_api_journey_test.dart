@@ -63,14 +63,7 @@ void main() {
             reason: 'CareConnect automated live journey',
           ),
         );
-        expect(created.status, AppointmentStatus.pending);
-
-        final confirmed = await admin.updateAppointmentStatus(
-          created.id,
-          AppointmentStatus.confirmed,
-          reason: 'Confirmed by CareConnect live journey',
-        );
-        expect(confirmed.status, AppointmentStatus.confirmed);
+        expect(created.status, AppointmentStatus.confirmed);
 
         final confirmedPatientView = await appointments.getAppointment(
           created.id,
