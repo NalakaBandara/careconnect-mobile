@@ -75,6 +75,12 @@ The checked-in app icons and native launch screens use the CareConnect brand
 mark. Store-distribution signing credentials are intentionally not committed;
 configure them locally with a personal Apple/Google developer account.
 
+For a physical iPhone, keep `DEVELOPMENT_TEAM` out of the committed Xcode
+project and run `flutter config --select-ios-signing-settings` to select a
+personal Apple Development identity before `flutter run`. If the wrong identity
+was previously saved, clear it first with
+`flutter config --clear-ios-signing-settings`.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
