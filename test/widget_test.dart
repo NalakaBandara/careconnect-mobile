@@ -807,7 +807,7 @@ void main() {
   });
 
   test(
-    'loads an availability range and matches each doctor schedule',
+    'loads each availability date and matches each doctor schedule',
     () async {
       final client = _FakeAvailabilityApiClient();
       final repository = FindCareRepository(client);
@@ -823,13 +823,24 @@ void main() {
         client.requestedPaths
             .where((path) => path == '/api/v1/doctors/22/available-slots')
             .length,
-        1,
+        2,
       );
-      final rangeQuery = client.requestedQueries.last;
-      expect(rangeQuery['clinicId'], '7');
-      expect(rangeQuery['fromDate'], isNotNull);
-      expect(rangeQuery['toDate'], isNotNull);
-      expect(rangeQuery, isNot(contains('date')));
+      final slotQueries = <Map<String, dynamic>>[
+        for (var index = 0; index < client.requestedPaths.length; index++)
+          if (client.requestedPaths[index] ==
+              '/api/v1/doctors/22/available-slots')
+            client.requestedQueries[index],
+      ];
+      expect(slotQueries.every((query) => query['clinicId'] == '7'), isTrue);
+      expect(slotQueries.every((query) => query['date'] != null), isTrue);
+      expect(
+        slotQueries.every(
+          (query) =>
+              !query.containsKey('fromDate') && !query.containsKey('toDate'),
+        ),
+        isTrue,
+      );
+      expect(slotQueries.map((query) => query['date']).toSet(), hasLength(2));
       expect(availability, hasLength(2));
       expect(availability.every((day) => day.doctorScheduleId != null), isTrue);
       expect(availability.first.endTimeFor('09:30'), '09:50');
@@ -2443,26 +2454,18 @@ class _FakeAvailabilityApiClient extends ApiClient {
         ],
       };
     }
-    final fromDate = DateTime.parse(queryParameters!['fromDate'] as String);
+    final date = queryParameters!['date'] as String;
     return {
-      'days': [
-        for (var index = 0; index < 2; index++)
-          {
-            'date': _testIsoDate(fromDate.add(Duration(days: index))),
-            'slots': [
-              {'startTime': '09:30', 'endTime': '09:50', 'available': true},
-              {'startTime': '10:00', 'endTime': '10:20', 'available': false},
-            ],
-          },
+      'doctorId': '22',
+      'clinicId': '7',
+      'date': date,
+      'slots': [
+        {'startTime': '09:30', 'endTime': '09:50', 'available': true},
+        {'startTime': '10:00', 'endTime': '10:20', 'available': false},
       ],
     };
   }
 }
-
-String _testIsoDate(DateTime date) =>
-    '${date.year.toString().padLeft(4, '0')}-'
-    '${date.month.toString().padLeft(2, '0')}-'
-    '${date.day.toString().padLeft(2, '0')}';
 
 class _FakeDoctorDetailApiClient extends ApiClient {
   _FakeDoctorDetailApiClient() : super(accessTokenProvider: _noToken);

@@ -243,65 +243,58 @@ class FindCareRepository
       days,
       (index) => DateTime(today.year, today.month, today.day + index),
     );
-    final responses = await Future.wait<Object?>([
-      _client.get(
-        ApiEndpoints.doctorSchedules(doctorId),
-        queryParameters: {'clinicId': clinicId},
-      ),
-      _client.get(
-        ApiEndpoints.availableSlots(doctorId),
-        queryParameters: {
-          'clinicId': clinicId,
-          'fromDate': _isoDate(dates.first),
-          'toDate': _isoDate(dates.last),
-        },
-      ),
-    ]);
-    final schedules = _listFromResponse(responses[0])
+    final schedulesResponse = await _client.get(
+      ApiEndpoints.doctorSchedules(doctorId),
+      queryParameters: {'clinicId': clinicId},
+    );
+    final schedules = _listFromResponse(schedulesResponse)
         .map(_DoctorSchedule.fromJson)
         .where((schedule) => schedule.isActive)
         .toList(growable: false);
-    final response = responses[1];
-    final body = response as Map<String, dynamic>;
-    final availability = (body['days'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map((day) {
-          final isoDate = day['date'] as String? ?? '';
-          final date = DateTime.tryParse(isoDate);
-          if (date == null) return null;
-          final matchingSchedules = schedules
-              .where((schedule) => schedule.dayOfWeek == _apiWeekday(date))
-              .toList(growable: false);
-          final scheduleId = matchingSchedules.length == 1
-              ? matchingSchedules.single.id
-              : null;
-          final slots = (day['slots'] as List<dynamic>? ?? const [])
-              .whereType<Map<String, dynamic>>()
-              .where((slot) => slot['available'] == true)
-              .toList(growable: false);
-          final times = slots
-              .map((slot) => slot['startTime'])
-              .whereType<String>()
-              .toList(growable: false);
-          final endTimes = <String, String>{};
-          for (final slot in slots) {
-            final startTime = slot['startTime'];
-            final endTime = slot['endTime'];
-            if (startTime is String && endTime is String) {
-              endTimes[startTime] = endTime;
-            }
-          }
-          return CareAvailabilityPreview(
-            day: _dayLabel(date),
-            date: '${_months[date.month - 1]} ${date.day}',
-            isoDate: isoDate,
-            times: times,
-            doctorScheduleId: scheduleId,
-            endTimes: endTimes,
-          );
-        })
-        .whereType<CareAvailabilityPreview>()
-        .toList(growable: false);
+    final slotResponses = await Future.wait<Object?>([
+      for (final date in dates)
+        _client.get(
+          ApiEndpoints.availableSlots(doctorId),
+          queryParameters: {'clinicId': clinicId, 'date': _isoDate(date)},
+        ),
+    ]);
+    final availability = <CareAvailabilityPreview>[];
+    for (var index = 0; index < dates.length; index++) {
+      final date = dates[index];
+      final body = slotResponses[index] as Map<String, dynamic>;
+      final matchingSchedules = schedules
+          .where((schedule) => schedule.dayOfWeek == _apiWeekday(date))
+          .toList(growable: false);
+      final scheduleId = matchingSchedules.length == 1
+          ? matchingSchedules.single.id
+          : null;
+      final slots = (body['slots'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .where((slot) => slot['available'] == true)
+          .toList(growable: false);
+      final times = slots
+          .map((slot) => slot['startTime'])
+          .whereType<String>()
+          .toList(growable: false);
+      final endTimes = <String, String>{};
+      for (final slot in slots) {
+        final startTime = slot['startTime'];
+        final endTime = slot['endTime'];
+        if (startTime is String && endTime is String) {
+          endTimes[startTime] = endTime;
+        }
+      }
+      availability.add(
+        CareAvailabilityPreview(
+          day: _dayLabel(date),
+          date: '${_months[date.month - 1]} ${date.day}',
+          isoDate: _isoDate(date),
+          times: times,
+          doctorScheduleId: scheduleId,
+          endTimes: endTimes,
+        ),
+      );
+    }
     return availability
         .where((day) => day.times.isNotEmpty && day.doctorScheduleId != null)
         .toList(growable: false);
