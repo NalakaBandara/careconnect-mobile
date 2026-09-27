@@ -98,7 +98,8 @@ class CareProfessional {
   final String? bio;
   final int? yearsOfExperience;
 
-  /// Preview-only enrichment until these fields are added to the API contract.
+  /// Rating remains preview-only; booking options are enriched from related
+  /// service and availability endpoints.
   final double? rating;
   final String? nextAvailableLabel;
   final List<CareService> services;

@@ -14,6 +14,11 @@ abstract interface class FindCareDataSource {
 
   Future<CareProfessional> getProfessionalProfile(CareProfessional summary);
 
+  Future<List<CareService>> getDoctorServices({
+    required String doctorId,
+    required String clinicId,
+  });
+
   Future<List<CareAvailabilityPreview>> getUpcomingAvailability({
     required String doctorId,
     required String clinicId,
@@ -164,12 +169,23 @@ class FindCareRepository
     throw const FormatException('Missing doctor data');
   }
 
-  Future<List<CareService>> getDoctorServices(String doctorId) async {
+  @override
+  Future<List<CareService>> getDoctorServices({
+    required String doctorId,
+    required String clinicId,
+  }) async {
     final response = await _client.get(
       ApiEndpoints.services,
-      queryParameters: {'doctorId': doctorId},
+      queryParameters: {'doctorId': doctorId, 'clinicId': clinicId},
     );
-    return _listFromResponse(response).map(CareService.fromJson).toList();
+    return _listFromResponse(response)
+        .map(CareService.fromJson)
+        .where(
+          (service) =>
+              service.status == null ||
+              service.status!.toUpperCase() == 'ACTIVE',
+        )
+        .toList(growable: false);
   }
 
   Future<CareAvailabilityPreview> getAvailableSlots({
@@ -216,16 +232,20 @@ class FindCareRepository
   ) async {
     final results = await Future.wait<Object>([
       getDoctor(summary.id),
-      getDoctorServices(summary.id),
       getClinics(),
     ]);
     final doctor = results[0] as CareProfessional;
-    final services = results[1] as List<CareService>;
-    final allClinics = results[2] as List<CareClinicSummary>;
+    final allClinics = results[1] as List<CareClinicSummary>;
     final clinicById = {for (final clinic in allClinics) clinic.id: clinic};
     final clinics = doctor.clinics
         .map((clinic) => clinicById[clinic.id] ?? clinic)
         .toList(growable: false);
+    final services = clinics.isEmpty
+        ? const <CareService>[]
+        : await getDoctorServices(
+            doctorId: doctor.id,
+            clinicId: clinics.first.id,
+          );
     return doctor.copyWith(clinics: clinics, services: services);
   }
 

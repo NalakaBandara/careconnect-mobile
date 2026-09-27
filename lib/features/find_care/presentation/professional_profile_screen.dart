@@ -84,7 +84,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
     }
   }
 
-  Future<void> _loadAvailability() async {
+  Future<void> _loadAvailability({bool reloadServices = false}) async {
     if (professional.clinics.isEmpty || widget.repository == null) return;
     final generation = ++_availabilityGeneration;
     final clinicId = professional.clinics[_selectedClinic].id;
@@ -95,10 +95,21 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       _selectedTime = null;
     });
     try {
-      final availability = await widget.repository!.getUpcomingAvailability(
-        doctorId: professional.id,
-        clinicId: clinicId,
-      );
+      final responses = await Future.wait<Object>([
+        widget.repository!.getUpcomingAvailability(
+          doctorId: professional.id,
+          clinicId: clinicId,
+        ),
+        if (reloadServices)
+          widget.repository!.getDoctorServices(
+            doctorId: professional.id,
+            clinicId: clinicId,
+          ),
+      ]);
+      final availability = responses[0] as List<CareAvailabilityPreview>;
+      final services = reloadServices
+          ? responses[1] as List<CareService>
+          : professional.services;
       if (!mounted || generation != _availabilityGeneration) {
         return;
       }
@@ -107,6 +118,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
           : '${availability.first.day}, ${availability.first.times.first}';
       setState(() {
         _professional = professional.copyWith(
+          services: services,
           availability: availability,
           nextAvailableLabel: nextLabel,
         );
@@ -126,9 +138,12 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
   }
 
   void _selectClinic(int index) {
-    setState(() => _selectedClinic = index);
+    setState(() {
+      _selectedClinic = index;
+      _professional = professional.copyWith(services: const []);
+    });
     if (widget.repository != null && widget.canLoadAvailability) {
-      _loadAvailability();
+      _loadAvailability(reloadServices: true);
     }
   }
 
@@ -177,6 +192,16 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
     final selectedAvailability = availability.isEmpty
         ? null
         : availability[_selectedDay.clamp(0, availability.length - 1)];
+    final requiresSignIn =
+        widget.currentUser == null && widget.onSignInRequired != null;
+    final hasBookingDetails =
+        professional.services.isNotEmpty &&
+        professional.clinics.isNotEmpty &&
+        professional.availability.isNotEmpty;
+    final canBeginBooking =
+        !_isLoading &&
+        !_availabilityLoading &&
+        (requiresSignIn || (hasBookingDetails && _selectedTime != null));
 
     return Scaffold(
       extendBody: true,
@@ -390,11 +415,17 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
         minimum: const EdgeInsets.fromLTRB(20, 8, 20, 14),
         child: FilledButton.icon(
           key: const Key('book-professional-button'),
-          onPressed: _isLoading || _availabilityLoading ? null : _beginBooking,
+          onPressed: canBeginBooking ? _beginBooking : null,
           icon: const Icon(Icons.calendar_month_rounded, size: 20),
           label: Text(
-            widget.currentUser == null && widget.onSignInRequired != null
+            requiresSignIn
                 ? 'Sign in to book'
+                : professional.services.isEmpty
+                ? 'Service required to book'
+                : professional.clinics.isEmpty
+                ? 'Clinic required to book'
+                : professional.availability.isEmpty
+                ? 'No times available'
                 : _selectedTime == null
                 ? 'Choose a time to book'
                 : 'Continue with $_selectedTime',
@@ -624,11 +655,15 @@ class _HeroStat extends StatelessWidget {
           children: [
             Icon(icon, color: AppColors.accent, size: 15),
             const SizedBox(width: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],

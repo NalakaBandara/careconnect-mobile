@@ -10,6 +10,7 @@ class AdminDoctorOperationsScreen extends StatefulWidget {
     required this.doctor,
     required this.clinics,
     required this.specialties,
+    required this.services,
     required this.repository,
     required this.onChanged,
     super.key,
@@ -18,6 +19,7 @@ class AdminDoctorOperationsScreen extends StatefulWidget {
   final AdminDoctor doctor;
   final List<AdminClinic> clinics;
   final List<CareSpecialty> specialties;
+  final List<CareService> services;
   final AdminDataSource repository;
   final Future<void> Function() onChanged;
 
@@ -31,6 +33,8 @@ class _AdminDoctorOperationsScreenState
   late final Set<String> _clinicIds;
   late final Set<String> _specialtyIds;
   late Future<List<AdminDoctorSchedule>> _schedules;
+  late Future<List<CareService>> _doctorServices;
+  Set<String>? _serviceIds;
   String? _busyAssignment;
 
   @override
@@ -39,6 +43,7 @@ class _AdminDoctorOperationsScreenState
     _clinicIds = widget.doctor.clinics.map((item) => item.id).toSet();
     _specialtyIds = widget.doctor.specialties.map((item) => item.id).toSet();
     _schedules = widget.repository.getDoctorSchedules(widget.doctor.id);
+    _doctorServices = widget.repository.getDoctorServices(widget.doctor.id);
   }
 
   Future<void> _toggleSpecialty(String id, bool selected) async {
@@ -58,6 +63,14 @@ class _AdminDoctorOperationsScreenState
           ? widget.repository.addDoctorClinic(widget.doctor.id, id)
           : widget.repository.removeDoctorClinic(widget.doctor.id, id),
       apply: () => selected ? _clinicIds.add(id) : _clinicIds.remove(id),
+    );
+  }
+
+  Future<void> _assignService(String id) async {
+    await _changeAssignment(
+      key: 'service-$id',
+      request: () => widget.repository.addDoctorService(widget.doctor.id, id),
+      apply: () => _serviceIds!.add(id),
     );
   }
 
@@ -189,6 +202,83 @@ class _AdminDoctorOperationsScreenState
               keyPrefix: 'clinic',
               emptyMessage: 'No clinics are configured.',
               onChanged: _toggleClinic,
+            ),
+            const SizedBox(height: 28),
+            _SectionTitle(
+              title: 'Services',
+              subtitle:
+                  'Assign the services patients can book with this doctor.',
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<List<CareService>>(
+              future: _doctorServices,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return _MessageCard(
+                    message: 'Doctor services could not be loaded.',
+                    actionLabel: 'Retry',
+                    onAction: () => setState(() {
+                      _doctorServices = widget.repository.getDoctorServices(
+                        widget.doctor.id,
+                      );
+                    }),
+                  );
+                }
+                _serviceIds ??= (snapshot.data ?? const [])
+                    .map((service) => service.id)
+                    .toSet();
+                if (widget.services.isEmpty) {
+                  return const _MessageCard(
+                    message: 'No services are configured.',
+                  );
+                }
+                return Column(
+                  key: const Key('admin-doctor-services'),
+                  children: widget.services
+                      .map((service) {
+                        final assigned = _serviceIds!.contains(service.id);
+                        final busy = _busyAssignment == 'service-${service.id}';
+                        return CheckboxListTile(
+                          key: Key('admin-doctor-service-${service.id}'),
+                          value: assigned,
+                          onChanged: assigned || _busyAssignment != null
+                              ? null
+                              : (_) => _assignService(service.id),
+                          title: Text(service.name),
+                          subtitle: Text(
+                            assigned
+                                ? 'Assigned to this doctor'
+                                : '${service.durationMinutes ?? 20} minutes',
+                          ),
+                          secondary: busy
+                              ? const SizedBox.square(
+                                  dimension: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.medical_services_outlined),
+                          contentPadding: EdgeInsets.zero,
+                        );
+                      })
+                      .toList(growable: false),
+                );
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Assigned services cannot be removed until the API supports doctor-service removal.',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
             ),
             const SizedBox(height: 30),
             Row(

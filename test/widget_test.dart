@@ -32,6 +32,7 @@ import 'package:careconnect_mobile/features/find_care/data/find_care_preview_dat
 import 'package:careconnect_mobile/features/find_care/data/find_care_repository.dart';
 import 'package:careconnect_mobile/features/find_care/domain/care_professional.dart';
 import 'package:careconnect_mobile/features/find_care/presentation/find_care_screen.dart';
+import 'package:careconnect_mobile/features/find_care/presentation/professional_profile_screen.dart';
 import 'package:careconnect_mobile/features/home/presentation/home_screen.dart';
 import 'package:careconnect_mobile/features/navigation/presentation/main_shell.dart';
 import 'package:careconnect_mobile/features/notifications/data/notifications_repository.dart';
@@ -909,6 +910,18 @@ void main() {
     expect(professional.primarySpecialty, 'Cardiology');
   });
 
+  test('loads services offered by both doctor and selected clinic', () async {
+    final client = _FakeDoctorDetailApiClient();
+    final repository = FindCareRepository(client);
+
+    final professional = await repository.getProfessionalProfile(
+      _FakeFindCareRepository.professional,
+    );
+
+    expect(client.lastServiceQuery, {'doctorId': '22', 'clinicId': '7'});
+    expect(professional.services.single.id, '31');
+  });
+
   testWidgets('completes the preview appointment request journey', (
     tester,
   ) async {
@@ -943,6 +956,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('booking-confirmation')), findsOneWidget);
     expect(find.text('Your appointment request is in'), findsOneWidget);
+  });
+
+  testWidgets('disables booking when the doctor has no service at the clinic', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final professional = FindCarePreviewData.professionals.first.copyWith(
+      services: const [],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProfessionalProfileScreen(
+          professional: professional,
+          currentUser: _FakeAuthDataSource.user,
+          canLoadAvailability: false,
+        ),
+      ),
+    );
+
+    final button = tester.widget<FilledButton>(
+      find.byKey(const Key('book-professional-button')),
+    );
+    expect(button.onPressed, isNull);
+    expect(find.text('Service required to book'), findsOneWidget);
   });
 
   testWidgets('creates a real appointment with an exact backend slot', (
@@ -1717,6 +1755,11 @@ void main() {
     await tester.tap(find.byKey(const Key('admin-doctor-setup-3')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-doctor-operations')), findsOneWidget);
+    final doctorService = find.byKey(const Key('admin-doctor-service-1'));
+    await tester.scrollUntilVisible(doctorService, 220);
+    await tester.tap(doctorService);
+    await tester.pumpAndSettle();
+    expect(repository.addedDoctorServiceId, '1');
     expect(find.text('Weekly schedules'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -1928,6 +1971,26 @@ void main() {
     expect(patient.roles, ['PATIENT']);
   });
 
+  test(
+    'admin doctor service assignment follows the backend contract',
+    () async {
+      final apiClient = _FakeAdminDoctorServiceApiClient();
+      final repository = AdminRepository(apiClient);
+
+      final services = await repository.getDoctorServices('3');
+      await repository.addDoctorService('3', '1');
+
+      expect(services.single.id, '1');
+      expect(apiClient.lastGetPath, '/api/v1/services');
+      expect(apiClient.lastGetQuery, {'doctorId': '3'});
+      expect(apiClient.lastPostPath, '/api/v1/doctor-services');
+      expect(apiClient.lastPostBody, {
+        'doctorProfileId': '3',
+        'serviceId': '1',
+      });
+    },
+  );
+
   testWidgets('admin creates a patient account from the user form', (
     tester,
   ) async {
@@ -2088,6 +2151,7 @@ class _FakeAdminDataSource implements AdminDataSource {
   int createUserCalls = 0;
   String? createdUserEmail;
   String? createdUserStatus;
+  String? addedDoctorServiceId;
 
   @override
   Future<AdminUser> createUser({
@@ -2203,6 +2267,11 @@ class _FakeAdminDataSource implements AdminDataSource {
   Future<void> addDoctorSpecialty(String doctorId, String specialtyId) async {}
 
   @override
+  Future<void> addDoctorService(String doctorId, String serviceId) async {
+    addedDoctorServiceId = serviceId;
+  }
+
+  @override
   Future<void> addClinicService(String clinicId, String serviceId) async {}
 
   @override
@@ -2310,6 +2379,10 @@ class _FakeAdminDataSource implements AdminDataSource {
           isActive: true,
         ),
       ];
+
+  @override
+  Future<List<CareService>> getDoctorServices(String doctorId) async =>
+      const [];
 
   @override
   Future<List<AdminAppointmentStatusEntry>> getAppointmentStatusHistory(
@@ -2432,6 +2505,14 @@ class _FakeFindCareRepository implements FindCareDataSource {
   }
 
   @override
+  Future<List<CareService>> getDoctorServices({
+    required String doctorId,
+    required String clinicId,
+  }) async => const [
+    CareService(id: '31', name: 'Heart health review', durationMinutes: 30),
+  ];
+
+  @override
   Future<CareProfessional> getProfessionalProfile(
     CareProfessional summary,
   ) async => professional.copyWith(
@@ -2512,28 +2593,51 @@ class _FakeDoctorDetailApiClient extends ApiClient {
   _FakeDoctorDetailApiClient() : super(accessTokenProvider: _noToken);
 
   static Future<String?> _noToken() async => null;
+  Map<String, dynamic>? lastServiceQuery;
 
   @override
   Future<Object?> get(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) async => {
-    'data': {
-      'id': '22',
-      'firstName': 'Nadeesha',
-      'lastName': 'Fernando',
-      'profilePhoto': null,
-      'bio': 'Cardiac care',
-      'yearsOfExperience': 8,
-      'isVerified': true,
-      'specialties': [
-        {'id': '12', 'name': 'Cardiology', 'description': null},
-      ],
-      'clinics': [
-        {'id': '7', 'name': 'Harbour Medical Centre'},
-      ],
-    },
-  };
+  }) async {
+    if (path == '/api/v1/services') {
+      lastServiceQuery = queryParameters;
+      return {
+        'data': [
+          {
+            'id': '31',
+            'name': 'Heart health review',
+            'durationMinutes': 30,
+            'status': 'ACTIVE',
+          },
+        ],
+      };
+    }
+    if (path == '/api/v1/clinics') {
+      return {
+        'data': [
+          {'id': '7', 'name': 'Harbour Medical Centre', 'city': 'Colombo'},
+        ],
+      };
+    }
+    return {
+      'data': {
+        'id': '22',
+        'firstName': 'Nadeesha',
+        'lastName': 'Fernando',
+        'profilePhoto': null,
+        'bio': 'Cardiac care',
+        'yearsOfExperience': 8,
+        'isVerified': true,
+        'specialties': [
+          {'id': '12', 'name': 'Cardiology', 'description': null},
+        ],
+        'clinics': [
+          {'id': '7', 'name': 'Harbour Medical Centre'},
+        ],
+      },
+    };
+  }
 }
 
 class _FakeAppointmentsDataSource implements AppointmentsDataSource {
@@ -2977,6 +3081,43 @@ class _FakeUserApiClient extends ApiClient {
         'roles': ['PATIENT'],
       },
     };
+  }
+}
+
+class _FakeAdminDoctorServiceApiClient extends ApiClient {
+  _FakeAdminDoctorServiceApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastGetPath;
+  Map<String, dynamic>? lastGetQuery;
+  String? lastPostPath;
+  Object? lastPostBody;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    lastGetPath = path;
+    lastGetQuery = queryParameters;
+    return {
+      'data': [
+        {
+          'id': '1',
+          'name': 'General consultation',
+          'durationMinutes': 30,
+          'status': 'ACTIVE',
+        },
+      ],
+    };
+  }
+
+  @override
+  Future<Object?> post(String path, {Object? body}) async {
+    lastPostPath = path;
+    lastPostBody = body;
+    return {'doctorId': '3', 'serviceId': '1'};
   }
 }
 

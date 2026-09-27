@@ -15,6 +15,7 @@ abstract final class ApiEndpoints {
   static const notifications = '$apiVersion/notifications';
   static const roles = '$apiVersion/roles';
   static const userRoles = '$apiVersion/user-roles';
+  static const doctorServices = '$apiVersion/doctor-services';
   static const auditLogs = '$apiVersion/audit-logs';
 
   static String clinic(Object id) => '$clinics/$id';

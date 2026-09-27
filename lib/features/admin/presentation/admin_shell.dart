@@ -437,6 +437,7 @@ class _ManagementPageState extends State<_ManagementPage> {
           doctor: doctor,
           clinics: widget.data.clinics,
           specialties: widget.data.specialties,
+          services: widget.data.services,
           repository: widget.repository,
           onChanged: widget.onRefresh,
         ),

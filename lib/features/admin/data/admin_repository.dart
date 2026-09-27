@@ -51,6 +51,10 @@ abstract interface class AdminDataSource {
 
   Future<void> removeDoctorClinic(String doctorId, String clinicId);
 
+  Future<List<CareService>> getDoctorServices(String doctorId);
+
+  Future<void> addDoctorService(String doctorId, String serviceId);
+
   Future<void> createDoctorSchedule(
     String doctorId,
     AdminDoctorSchedule schedule,
@@ -253,6 +257,25 @@ class AdminRepository implements AdminDataSource {
         'yearsOfExperience': yearsOfExperience,
         'isVerified': isVerified,
       },
+    );
+  }
+
+  @override
+  Future<List<CareService>> getDoctorServices(String doctorId) async {
+    final response = await _client.get(
+      ApiEndpoints.services,
+      queryParameters: {'doctorId': doctorId},
+    );
+    return _dataList(
+      _objectMap(response),
+    ).map(CareService.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<void> addDoctorService(String doctorId, String serviceId) async {
+    await _client.post(
+      ApiEndpoints.doctorServices,
+      body: {'doctorProfileId': doctorId, 'serviceId': serviceId},
     );
   }
 
