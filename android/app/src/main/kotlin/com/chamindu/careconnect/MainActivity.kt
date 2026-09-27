@@ -1,4 +1,4 @@
-package com.example.careconnect_mobile
+package com.chamindu.careconnect
 
 import io.flutter.embedding.android.FlutterActivity
 

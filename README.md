@@ -65,6 +65,16 @@ Find Care display an offline banner with the cache timestamp. Live availability,
 booking, appointments, patient profiles, and health-related information are not
 cached and continue to require a backend connection.
 
+## Mobile application identity
+
+- Application name: `CareConnect`
+- Android application ID: `com.chamindu.careconnect`
+- iOS bundle identifier: `com.chamindu.careconnect`
+
+The checked-in app icons and native launch screens use the CareConnect brand
+mark. Store-distribution signing credentials are intentionally not committed;
+configure them locally with a personal Apple/Google developer account.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
