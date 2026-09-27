@@ -193,7 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final nextAppointment = upcoming.isEmpty ? null : upcoming.first;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FCFB),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -224,10 +223,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 8),
 
-                    const Text(
+                    Text(
                       'GOOD MORNING',
                       style: TextStyle(
-                        color: Color(0xFF80969A),
+                        color: context.careColors.muted,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 2.5,
@@ -244,8 +243,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             key: const Key('home-greeting'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF092B31),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 34,
                               height: 1.05,
                               fontWeight: FontWeight.w800,
@@ -262,10 +261,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 8),
 
-                    const Text(
+                    Text(
                       'How can we help you feel your best today?',
                       style: TextStyle(
-                        color: Color(0xFF7F9296),
+                        color: context.careColors.muted,
                         fontSize: 14,
                         height: 1.4,
                       ),
@@ -403,18 +402,18 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Row(
             children: [
-              CareConnectMark(size: 48),
-              SizedBox(width: 10),
+              const CareConnectMark(size: 48),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text.rich(
                       TextSpan(
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.6,
@@ -422,22 +421,24 @@ class _HomeHeader extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: 'Care',
-                            style: TextStyle(color: Color(0xFF102B32)),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                           ),
-                          TextSpan(
+                          const TextSpan(
                             text: 'Connect',
                             style: TextStyle(color: AppColors.primary),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(height: 1),
+                    const SizedBox(height: 1),
                     Text(
                       'Your Health, Our Priority',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Color(0xFF8B9EA1),
+                        color: context.careColors.muted,
                         fontSize: 9.5,
                         fontWeight: FontWeight.w500,
                       ),
@@ -454,7 +455,7 @@ class _HomeHeader extends StatelessWidget {
         Tooltip(
           message: 'Notifications',
           child: Material(
-            color: const Color(0xFFE3F5F1),
+            color: context.careColors.softSurface,
             shape: const CircleBorder(),
             child: InkWell(
               key: const Key('home-notifications-button'),
@@ -465,7 +466,7 @@ class _HomeHeader extends StatelessWidget {
                 height: 42,
                 child: Icon(
                   Icons.notifications_none_rounded,
-                  color: Color(0xFF17464B),
+                  color: AppColors.primary,
                   size: 21,
                 ),
               ),
@@ -478,7 +479,7 @@ class _HomeHeader extends StatelessWidget {
         Tooltip(
           message: 'Profile',
           child: Material(
-            color: const Color(0xFFF3EAFE),
+            color: context.careColors.softSurface,
             shape: const CircleBorder(),
             child: InkWell(
               onTap: onProfile,
@@ -488,8 +489,8 @@ class _HomeHeader extends StatelessWidget {
                 imageUrl: profilePhoto,
                 fallbackLabel: _initials(firstName),
                 size: 42,
-                backgroundColor: const Color(0xFFF3EAFE),
-                foregroundColor: const Color(0xFF8159D9),
+                backgroundColor: context.careColors.softSurface,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -676,8 +677,8 @@ class _SectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF16373C),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 19,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.4,
@@ -746,7 +747,7 @@ class _QuickAction extends StatelessWidget {
           height: 112,
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.careColors.border),
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
@@ -776,13 +777,13 @@ class _QuickAction extends StatelessWidget {
                   Container(
                     width: 26,
                     height: 26,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF2F8F7),
+                    decoration: BoxDecoration(
+                      color: context.careColors.softSurface,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.chevron_right_rounded,
-                      color: Color(0xFF547075),
+                      color: context.careColors.muted,
                       size: 17,
                     ),
                   ),
@@ -795,8 +796,8 @@ class _QuickAction extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF14353A),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
@@ -808,7 +809,7 @@ class _QuickAction extends StatelessWidget {
                 caption,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF8A9C9F), fontSize: 10),
+                style: TextStyle(color: context.careColors.muted, fontSize: 10),
               ),
             ],
           ),
@@ -827,7 +828,7 @@ class _AppointmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFEAF8F5),
+      color: context.careColors.softSurface,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         key: const Key('next-appointment-card'),
@@ -877,8 +878,8 @@ class _AppointmentCard extends StatelessWidget {
                       appointment.doctor.displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF13363B),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                       ),
@@ -901,16 +902,16 @@ class _AppointmentCard extends StatelessWidget {
 
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.schedule_rounded,
                           size: 13,
-                          color: Color(0xFF83979A),
+                          color: context.careColors.muted,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           appointment.startTime,
-                          style: const TextStyle(
-                            color: Color(0xFF83979A),
+                          style: TextStyle(
+                            color: context.careColors.muted,
                             fontSize: 11,
                           ),
                         ),
@@ -923,8 +924,8 @@ class _AppointmentCard extends StatelessWidget {
               Container(
                 width: 32,
                 height: 32,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: context.careColors.card,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -960,7 +961,7 @@ class _DashboardLoading extends StatelessWidget {
       key: const Key('home-dashboard-loading'),
       height: 92,
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF8F5),
+        color: context.careColors.softSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Center(
@@ -989,7 +990,7 @@ class _DashboardError extends StatelessWidget {
       key: const Key('home-dashboard-error'),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E9),
+        color: Theme.of(context).colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -1013,8 +1014,8 @@ class _DashboardError extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                color: Color(0xFF667B7F),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onErrorContainer,
                 fontSize: 11.5,
                 height: 1.35,
               ),
@@ -1047,7 +1048,7 @@ class _GuestAppointmentsCard extends StatelessWidget {
     key: const Key('home-guest-appointments'),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: AppColors.mintSoft,
+      color: context.careColors.softSurface,
       borderRadius: BorderRadius.circular(20),
     ),
     child: Row(
@@ -1057,18 +1058,21 @@ class _GuestAppointmentsCard extends StatelessWidget {
           child: Icon(Icons.lock_outline_rounded, color: AppColors.primary),
         ),
         const SizedBox(width: 12),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Sign in to see your visits',
-                style: TextStyle(fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              SizedBox(height: 3),
+              const SizedBox(height: 3),
               Text(
                 'Your appointments will stay private and appear here.',
-                style: TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(color: context.careColors.muted, fontSize: 11),
               ),
             ],
           ),
@@ -1099,10 +1103,10 @@ class _CareCategoriesEmpty extends StatelessWidget {
     ),
     child: Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Text(
             'Browse the care directory to find the right specialist.',
-            style: TextStyle(color: AppColors.muted, fontSize: 12),
+            style: TextStyle(color: context.careColors.muted, fontSize: 12),
           ),
         ),
         TextButton(onPressed: onFindCare, child: const Text('Find care')),
@@ -1119,7 +1123,7 @@ class _NoUpcomingAppointments extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFEAF8F5),
+      color: context.careColors.softSurface,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         key: const Key('home-dashboard-empty'),
@@ -1132,8 +1136,8 @@ class _NoUpcomingAppointments extends StatelessWidget {
               Container(
                 width: 42,
                 height: 42,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: context.careColors.card,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1145,23 +1149,23 @@ class _NoUpcomingAppointments extends StatelessWidget {
 
               const SizedBox(width: 11),
 
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'No upcoming visits.',
                       style: TextStyle(
-                        color: Color(0xFF17383D),
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Find care whenever you are ready.',
                       style: TextStyle(
-                        color: Color(0xFF789093),
+                        color: context.careColors.muted,
                         fontSize: 11.5,
                         height: 1.3,
                       ),
@@ -1173,8 +1177,8 @@ class _NoUpcomingAppointments extends StatelessWidget {
               Container(
                 width: 32,
                 height: 32,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: context.careColors.card,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1209,7 +1213,7 @@ class _CategoryCard extends StatelessWidget {
           width: 130,
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.careColors.border),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
@@ -1231,8 +1235,8 @@ class _CategoryCard extends StatelessWidget {
                 category.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF15363B),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1244,7 +1248,10 @@ class _CategoryCard extends StatelessWidget {
                 category.caption,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF8A9C9F), fontSize: 9.5),
+                style: TextStyle(
+                  color: context.careColors.muted,
+                  fontSize: 9.5,
+                ),
               ),
             ],
           ),
@@ -1259,13 +1266,16 @@ class _WellnessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF6EC), Color(0xFFFFF0E3)],
+          colors: isDark
+              ? const [Color(0xFF33261C), Color(0xFF292119)]
+              : const [Color(0xFFFFF6EC), Color(0xFFFFF0E3)],
         ),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -1287,25 +1297,25 @@ class _WellnessCard extends StatelessWidget {
 
           const SizedBox(width: 12),
 
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'A gentle reminder',
                   style: TextStyle(
-                    color: Color(0xFF17383D),
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
 
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
 
                 Text(
                   'Small check-ins with your health can make a big difference.',
                   style: TextStyle(
-                    color: Color(0xFF819396),
+                    color: context.careColors.muted,
                     fontSize: 11,
                     height: 1.3,
                   ),

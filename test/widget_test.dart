@@ -624,6 +624,46 @@ void main() {
     );
   });
 
+  testWidgets('patient dashboard uses readable dark-mode colours', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final theme = AppTheme.dark;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: HomeScreen(
+          firstName: 'Chamindu',
+          onFindCare: () {},
+          onAppointments: () {},
+          onProfile: () {},
+          onNotifications: () {},
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('home-greeting'))).style?.color,
+      theme.colorScheme.onSurface,
+    );
+    expect(
+      tester.widget<Text>(find.text('Quick actions')).style?.color,
+      theme.colorScheme.onSurface,
+    );
+    expect(
+      tester.widget<Text>(find.text('Find a doctor')).style?.color,
+      theme.colorScheme.onSurface,
+    );
+    expect(
+      tester.widget<Text>(find.text('Browse care')).style?.color,
+      theme.extension<CareThemeColors>()!.muted,
+    );
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+      isNull,
+    );
+  });
+
   testWidgets('loads the public care directory for a guest', (tester) async {
     usePhoneSize(tester);
     final repository = _FakeFindCareRepository();
