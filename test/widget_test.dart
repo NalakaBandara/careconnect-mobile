@@ -1123,6 +1123,23 @@ void main() {
     expect(history.last.changedByUserId, '4');
   });
 
+  test('appointment cancellation sends the cancelled status', () async {
+    final client = _FakeCancellationApiClient();
+    final repository = AppointmentsRepository(client);
+
+    final appointment = await repository.cancelAppointment(
+      '4821',
+      reason: 'Schedule changed',
+    );
+
+    expect(client.lastPatchPath, '/api/v1/appointments/4821/status');
+    expect(client.lastPatchBody, {
+      'status': 'CANCELLED',
+      'reason': 'Schedule changed',
+    });
+    expect(appointment.status, AppointmentStatus.cancelled);
+  });
+
   test(
     'shared appointments controller deduplicates loads and syncs updates',
     () async {
@@ -3023,6 +3040,42 @@ class _FakeNotificationsApiClient extends ApiClient {
       'isRead': true,
       'createdAt': '2026-09-20T08:30:00.000Z',
       'readAt': '2026-09-21T08:00:00.000Z',
+    };
+  }
+}
+
+class _FakeCancellationApiClient extends ApiClient {
+  _FakeCancellationApiClient() : super(accessTokenProvider: _noToken);
+
+  String? lastPatchPath;
+  Object? lastPatchBody;
+
+  static Future<String?> _noToken() async => null;
+
+  @override
+  Future<Object?> patch(String path, {Object? body}) async {
+    lastPatchPath = path;
+    lastPatchBody = body;
+    return {
+      'id': '4821',
+      'patientId': '8',
+      'doctor': {'id': '1', 'firstName': 'Arun', 'lastName': 'Mehta'},
+      'clinic': {'id': '1', 'name': 'Northgate Medical Centre'},
+      'service': {
+        'id': '1',
+        'name': 'General consultation',
+        'durationMinutes': 30,
+      },
+      'doctorScheduleId': '15',
+      'appointmentDate': '2026-09-21',
+      'startTime': '09:30',
+      'endTime': '10:00',
+      'status': 'CANCELLED',
+      'bookingReference': 'CC-4821-MEH',
+      'reason': 'Schedule changed',
+      'notes': null,
+      'createdAt': '2026-09-17T09:00:00.000Z',
+      'updatedAt': '2026-09-18T09:00:00.000Z',
     };
   }
 }

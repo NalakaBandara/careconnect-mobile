@@ -82,7 +82,7 @@ class AppointmentsRepository implements AppointmentsDataSource {
   @override
   Future<CareAppointment> cancelAppointment(String id, {String? reason}) async {
     final response = await _client.patch(
-      ApiEndpoints.appointment(id),
+      ApiEndpoints.appointmentStatus(id),
       body: {
         'status': AppointmentStatus.cancelled.apiValue,
         if (reason?.trim().isNotEmpty ?? false) 'reason': reason!.trim(),
