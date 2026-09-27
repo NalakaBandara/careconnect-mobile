@@ -1,12 +1,14 @@
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/features/auth/presentation/welcome_screen.dart';
+import 'package:careconnect_mobile/features/onboarding/data/onboarding_preference_store.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({this.authBuilder, super.key});
+  const OnboardingScreen({this.authBuilder, this.preferenceStore, super.key});
 
   final WidgetBuilder? authBuilder;
+  final OnboardingPreferenceStore? preferenceStore;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -50,11 +52,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   final _pageController = PageController();
+  late final OnboardingPreferenceStore _preferenceStore =
+      widget.preferenceStore ?? SecureOnboardingPreferenceStore();
   int _currentPage = 0;
 
   bool get _isLastPage => _currentPage == _pages.length - 1;
 
-  void _finish() {
+  Future<void> _finish() async {
+    try {
+      await _preferenceStore.markCompleted();
+    } catch (_) {
+      // Storage failure must not prevent the user from entering the app.
+    }
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: widget.authBuilder ?? (_) => const WelcomeScreen(),

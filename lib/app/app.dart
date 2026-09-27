@@ -1,13 +1,19 @@
 import 'package:careconnect_mobile/core/logging/app_logger.dart';
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
 import 'package:careconnect_mobile/core/theme/theme_controller.dart';
+import 'package:careconnect_mobile/features/onboarding/data/onboarding_preference_store.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 class CareConnectApp extends StatefulWidget {
-  const CareConnectApp({super.key, this.themeController});
+  const CareConnectApp({
+    super.key,
+    this.themeController,
+    this.onboardingPreferenceStore,
+  });
 
   final ThemeController? themeController;
+  final OnboardingPreferenceStore? onboardingPreferenceStore;
 
   @override
   State<CareConnectApp> createState() => _CareConnectAppState();
@@ -43,7 +49,7 @@ class _CareConnectAppState extends State<CareConnectApp> {
           darkTheme: AppTheme.dark,
           themeMode: _themeController.themeMode,
           navigatorObservers: [CareConnectNavigatorObserver()],
-          home: const SplashScreen(),
+          home: SplashScreen(preferenceStore: widget.onboardingPreferenceStore),
         ),
       ),
     );

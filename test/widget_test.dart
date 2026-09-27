@@ -37,7 +37,9 @@ import 'package:careconnect_mobile/features/navigation/presentation/main_shell.d
 import 'package:careconnect_mobile/features/notifications/data/notifications_repository.dart';
 import 'package:careconnect_mobile/features/notifications/domain/care_notification.dart';
 import 'package:careconnect_mobile/features/notifications/presentation/notifications_screen.dart';
+import 'package:careconnect_mobile/features/onboarding/data/onboarding_preference_store.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:careconnect_mobile/features/onboarding/presentation/splash_screen.dart';
 import 'package:careconnect_mobile/features/profile/domain/current_user.dart';
 import 'package:careconnect_mobile/features/profile/data/user_repository.dart';
 import 'package:careconnect_mobile/features/profile/presentation/profile_screen.dart';
@@ -60,7 +62,11 @@ void main() {
 
   testWidgets('shows splash then opens onboarding', (tester) async {
     usePhoneSize(tester);
-    await tester.pumpWidget(const CareConnectApp());
+    await tester.pumpWidget(
+      CareConnectApp(
+        onboardingPreferenceStore: _FakeOnboardingPreferenceStore(),
+      ),
+    );
 
     expect(find.byKey(const Key('splash-title')), findsOneWidget);
 
@@ -68,6 +74,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('CARE, YOUR WAY'), findsOneWidget);
+  });
+
+  testWidgets('skips onboarding after it has been completed', (tester) async {
+    usePhoneSize(tester);
+    final store = _FakeOnboardingPreferenceStore(completed: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SplashScreen(
+          preferenceStore: store,
+          completedBuilder: (_) =>
+              const Scaffold(body: Text('Welcome destination')),
+        ),
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 1800));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome destination'), findsOneWidget);
+    expect(find.text('CARE, YOUR WAY'), findsNothing);
   });
 
   testWidgets('restores and changes the saved app theme', (tester) async {
@@ -168,9 +194,11 @@ void main() {
   testWidgets('moves through onboarding and opens auth entry', (tester) async {
     usePhoneSize(tester);
     final auth = _FakeAuthDataSource();
+    final onboardingStore = _FakeOnboardingPreferenceStore();
     await tester.pumpWidget(
       MaterialApp(
         home: OnboardingScreen(
+          preferenceStore: onboardingStore,
           authBuilder: (_) => WelcomeScreen(authService: auth),
         ),
       ),
@@ -193,6 +221,7 @@ void main() {
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     expect(find.text('Your care starts here.'), findsOneWidget);
+    expect(onboardingStore.completed, isTrue);
   });
 
   testWidgets('guest profile offers direct sign in and registration', (
@@ -2035,6 +2064,18 @@ class _FakeThemePreferenceStore implements ThemePreferenceStore {
 
   @override
   Future<void> write(String value) async => this.value = value;
+}
+
+class _FakeOnboardingPreferenceStore implements OnboardingPreferenceStore {
+  _FakeOnboardingPreferenceStore({this.completed = false});
+
+  bool completed;
+
+  @override
+  Future<bool> hasCompleted() async => completed;
+
+  @override
+  Future<void> markCompleted() async => completed = true;
 }
 
 class _FakeAdminDataSource implements AdminDataSource {

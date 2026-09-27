@@ -1,12 +1,17 @@
 import 'dart:async';
 
 import 'package:careconnect_mobile/core/theme/app_theme.dart';
+import 'package:careconnect_mobile/features/auth/presentation/welcome_screen.dart';
+import 'package:careconnect_mobile/features/onboarding/data/onboarding_preference_store.dart';
 import 'package:careconnect_mobile/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:careconnect_mobile/shared/widgets/careconnect_mark.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({this.preferenceStore, this.completedBuilder, super.key});
+
+  final OnboardingPreferenceStore? preferenceStore;
+  final WidgetBuilder? completedBuilder;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -16,11 +21,14 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fade;
+  late final OnboardingPreferenceStore _preferenceStore;
   Timer? _navigationTimer;
 
   @override
   void initState() {
     super.initState();
+    _preferenceStore =
+        widget.preferenceStore ?? SecureOnboardingPreferenceStore();
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -28,15 +36,23 @@ class _SplashScreenState extends State<SplashScreen>
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     _navigationTimer = Timer(
       const Duration(milliseconds: 1700),
-      _openOnboarding,
+      _continueFromSplash,
     );
   }
 
-  void _openOnboarding() {
+  Future<void> _continueFromSplash() async {
+    var hasCompletedOnboarding = false;
+    try {
+      hasCompletedOnboarding = await _preferenceStore.hasCompleted();
+    } catch (_) {
+      // If device storage is unavailable, showing onboarding is the safe path.
+    }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        pageBuilder: (_, animation, _) => const OnboardingScreen(),
+        pageBuilder: (_, animation, _) => hasCompletedOnboarding
+            ? (widget.completedBuilder?.call(context) ?? const WelcomeScreen())
+            : OnboardingScreen(preferenceStore: _preferenceStore),
         transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: child,
